@@ -1,0 +1,19 @@
+﻿OC Studio 0.18.1 私人仓库上传说明
+================================
+
+这个文件夹已经是一个初始化好的 Git 仓库（main 分支，已有首次提交）。
+推荐上传到你自己的私有仓库：nekibud/OC-Studio-Personal
+
+方式一：命令行（推荐）
+1. 在 GitHub 新建私有仓库 OC-Studio-Personal（不要勾选 README/.gitignore）。
+2. 在本文件夹打开终端，执行：
+   git remote add origin https://github.com/nekibud/OC-Studio-Personal.git
+   git push -u origin main
+
+方式二：网页上传
+如果不想用命令行，可把本文件夹压缩成 zip，在 GitHub 新建仓库后选择
+"uploading an existing file"，把解压后的文件拖进去。不要上传 .git 文件夹。
+
+注意：
+- 不要上传 node_modules、out、dist、安装包、WebView 缓存；本文件夹已排除。
+- 本仓库是完整当前版本，包含 src、public、android、src-tauri、installer、portable 启动器源码。
