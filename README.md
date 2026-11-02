@@ -1,4 +1,4 @@
-# OC Studio
+# OC editor
 
 本地优先的原创角色（OC）与世界观创作工作台。
 
