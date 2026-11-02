@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:bal="http://wixtoolset.org/schemas/v4/wxs/bal">
+  <Bundle
+    Name="OC Studio"
+    Manufacturer="OC Studio"
+    Version="0.18.1"
+    UpgradeCode="C3D4E5F6-A7B8-4C9D-8E0F-1A2B3C4D5E6F"
+    IconSourceFile="installer\ocstudio.ico">
+
+    <BootstrapperApplicationRef Id="WixStandardBootstrapperApplication.HyperlinkLicense" />
+
+    <Chain>
+      <MsiPackage
+        SourceFile="$(var.MsiPath)"
+        bal:DisplayInternalUI="yes"
+        Vital="yes" />
+    </Chain>
+  </Bundle>
+</Wix>

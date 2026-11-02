@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
+  <Package
+    Name="OC Studio"
+    Manufacturer="OC Studio"
+    Version="0.18.1"
+    UpgradeCode="B7E6A0F2-1C3D-4E5F-9A8B-0C1D2E3F4A5B"
+    Scope="perUser"
+    InstallerVersion="500"
+    Compressed="yes"
+    Language="2052"
+    Codepage="65001">
+
+    <SummaryInformation
+      Description="OC Studio 本地优先的原创角色与世界观创作工作台"
+      Manufacturer="OC Studio" />
+
+    <MajorUpgrade
+      AllowSameVersionUpgrades="yes"
+      DowngradeErrorMessage="已经安装了更新版本的 OC Studio。" />
+
+    <!-- Windows 10 1809+ x64；Windows 11 同样满足这些条件。 -->
+    <Launch
+      Condition="VersionNT64"
+      Message="OC Studio 需要 64 位 Windows 10 或更高版本。" />
+    <Launch
+      Condition="VersionNT &gt;= 1000"
+      Message="OC Studio 需要 Windows 10 或更高版本，当前系统版本过低。" />
+    <Launch
+      Condition="MsiNTProductType = 1"
+      Message="OC Studio 仅支持 Windows 客户端版本（Windows 10 / 11）。" />
+
+    <MediaTemplate EmbedCab="yes" />
+
+    <Property Id="ARPPRODUCTICON" Value="OCStudioIcon" />
+    <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
+
+    <Icon Id="OCStudioIcon" SourceFile="installer\ocstudio.ico" />
+
+    <ui:WixUI Id="WixUI_InstallDir" />
+
+    <StandardDirectory Id="LocalAppDataFolder">
+      <Directory Id="ProgramsFolder" Name="Programs">
+        <Directory Id="INSTALLFOLDER" Name="OC Studio" />
+      </Directory>
+    </StandardDirectory>
+
+    <StandardDirectory Id="DesktopFolder" />
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="ApplicationProgramsFolder" Name="OC Studio" />
+    </StandardDirectory>
+
+    <Feature Id="MainFeature" Title="OC Studio" Level="1">
+      <ComponentGroupRef Id="AppFiles" />
+      <ComponentRef Id="DesktopShortcut" />
+      <ComponentRef Id="StartMenuShortcut" />
+    </Feature>
+  </Package>
+
+  <Fragment>
+    <ComponentGroup Id="AppFiles" Directory="INSTALLFOLDER">
+      <Files Include="$(var.PayloadDir)\**" />
+    </ComponentGroup>
+
+    <Component Id="DesktopShortcut" Directory="DesktopFolder" Guid="A1B2C3D4-E5F6-4A7B-8C9D-0E1F2A3B4C5D">
+      <Shortcut
+        Id="DesktopShortcut"
+        Name="OC Studio"
+        Description="OC Studio 本地优先创作工作台"
+        Target="[INSTALLFOLDER]OCStudio.exe"
+        WorkingDirectory="INSTALLFOLDER"
+        Icon="OCStudioIcon" />
+      <RegistryValue
+        Root="HKCU"
+        Key="Software\OC Studio"
+        Name="DesktopShortcut"
+        Type="integer"
+        Value="1"
+        KeyPath="yes" />
+    </Component>
+
+    <Component Id="StartMenuShortcut" Directory="ApplicationProgramsFolder" Guid="B2C3D4E5-F6A7-4B8C-9D0E-1F2A3B4C5D6E">
+      <Shortcut
+        Id="StartMenuShortcut"
+        Name="OC Studio"
+        Description="OC Studio 本地优先创作工作台"
+        Target="[INSTALLFOLDER]OCStudio.exe"
+        WorkingDirectory="INSTALLFOLDER"
+        Icon="OCStudioIcon" />
+      <RemoveFolder Id="RemoveApplicationProgramsFolder" On="uninstall" />
+      <RegistryValue
+        Root="HKCU"
+        Key="Software\OC Studio"
+        Name="StartMenuShortcut"
+        Type="integer"
+        Value="1"
+        KeyPath="yes" />
+    </Component>
+  </Fragment>
+</Wix>

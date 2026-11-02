@@ -1,0 +1,210 @@
+import { db } from '@/lib/db'
+import { logOperation } from '@/lib/sync'
+import { updateReferencesAfterRename, syncReferenceLabels } from '@/lib/reference-sync'
+import {
+  syncRelationsFromEntities,
+  syncRelationLabelFromEntity,
+} from '@/features/relations/services'
+import type { Event } from '@/types'
+import type { EventFormData } from './types'
+
+const TABLE = 'events'
+
+function buildDefaultEvent(data: EventFormData, overrides: Partial<Event> = {}): Omit<Event, 'id'> {
+  const now = Date.now()
+  return {
+    title: data.title,
+    time: data.time,
+    endTime: data.endTime,
+    location: data.location,
+    summary: data.summary,
+    isMajor: data.isMajor,
+    content: data.content ?? '',
+    characters: data.characters ?? [],
+    countries: data.countries ?? [],
+    parentEventId: null,
+    relations: [],
+    tags: data.tags ?? [],
+    images: [],
+    createdAt: now,
+    updatedAt: now,
+    deleted: false,
+    _syncStatus: 'pending',
+    _lastModified: now,
+    ...overrides,
+  }
+}
+
+export async function getEvents(): Promise<Event[]> {
+  const all = await db.events.orderBy('time').toArray()
+  return all.filter((e) => !e.deleted)
+}
+
+export async function getEvent(id: number): Promise<Event | undefined> {
+  return db.events.get(id)
+}
+
+export async function createEvent(data: EventFormData): Promise<number> {
+  const event = buildDefaultEvent(data)
+  const id = await db.events.add(event as Event)
+
+  await logOperation(TABLE, id, 'title', '', data.title)
+  await logOperation(TABLE, id, 'time', '', data.time)
+  if (data.location) {
+    await logOperation(TABLE, id, 'location', '', data.location)
+  }
+  if (data.summary) {
+    await logOperation(TABLE, id, 'summary', '', data.summary)
+  }
+
+  return id
+}
+
+export async function updateEvent(id: number, data: Partial<EventFormData>): Promise<void> {
+  const existing = await db.events.get(id)
+  if (!existing) {
+    throw new Error(`Event not found: ${id}`)
+  }
+
+  const now = Date.now()
+  const updates: Partial<Event> = {
+    updatedAt: now,
+    _syncStatus: 'pending',
+    _lastModified: now,
+  }
+
+  type FieldKey = keyof EventFormData
+  const fields: FieldKey[] = ['title', 'time', 'endTime', 'location', 'summary', 'isMajor', 'content', 'headerUrl']
+
+  for (const field of fields) {
+    const newValue = data[field]
+    if (newValue !== undefined) {
+      const oldValue = existing[field] ?? ''
+      ;(updates as Record<string, unknown>)[field] = newValue
+      await logOperation(TABLE, id, field, String(oldValue), String(newValue))
+    }
+  }
+
+  if (data.characters !== undefined) {
+    ;(updates as Record<string, unknown>).characters = data.characters
+    await logOperation(
+      TABLE,
+      id,
+      'characters',
+      JSON.stringify(existing.characters),
+      JSON.stringify(data.characters),
+    )
+  }
+
+  if (data.countries !== undefined) {
+    ;(updates as Record<string, unknown>).countries = data.countries
+    await logOperation(
+      TABLE,
+      id,
+      'countries',
+      JSON.stringify(existing.countries ?? []),
+      JSON.stringify(data.countries),
+    )
+  }
+
+  if (data.relations !== undefined) {
+    ;(updates as Record<string, unknown>).relations = data.relations
+    await logOperation(
+      TABLE,
+      id,
+      'relations',
+      JSON.stringify(existing.relations ?? []),
+      JSON.stringify(data.relations),
+    )
+  }
+
+  if (data.tags !== undefined) {
+    ;(updates as Record<string, unknown>).tags = data.tags
+    await logOperation(
+      TABLE,
+      id,
+      'tags',
+      JSON.stringify(existing.tags ?? []),
+      JSON.stringify(data.tags),
+    )
+  }
+
+  if (data.document !== undefined) {
+    const synced = await syncReferenceLabels(data.document as Record<string, unknown>)
+    ;(updates as Record<string, unknown>).document = synced
+  }
+
+  await db.events.update(id, updates)
+
+  if (data.relations !== undefined) {
+    const previous = existing.relations ?? []
+    const next = data.relations
+    const previousIds = new Set(previous.map((item) => item.targetId))
+    const nextIds = new Set(next.map((item) => item.targetId))
+    const peers = new Set<number>([
+      ...previousIds,
+      ...nextIds,
+    ])
+    peers.delete(id)
+    for (const peerId of peers) {
+      const peer = await db.events.get(peerId)
+      if (!peer || peer.deleted) continue
+      const relation = next.find((item) => item.targetId === peerId)
+      const peerRelations = (peer.relations ?? []).filter((item) => item.targetId !== id)
+      if (relation) {
+        peerRelations.push({ targetId: id, relation: relation.relation })
+      }
+      await db.events.update(peerId, {
+        relations: peerRelations,
+        updatedAt: Date.now(),
+        _syncStatus: 'pending',
+      })
+    }
+
+    for (const relation of next) {
+      await syncRelationLabelFromEntity(
+        'event-event',
+        'event',
+        id,
+        'event',
+        relation.targetId,
+        relation.relation,
+      )
+    }
+  }
+
+  if (data.relations !== undefined) {
+    // Write the canonical relation rows immediately so the relationship graph
+    // sees event ↔ event changes without waiting for a later graph refresh.
+    await syncRelationsFromEntities()
+  }
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('data-updated'))
+  }
+
+  if (data.title !== undefined) {
+    updateReferencesAfterRename('event', id, data.title).catch(() => {})
+  }
+}
+
+export async function saveDocument(id: number, document: unknown): Promise<void> {
+  const now = Date.now()
+  await db.events.update(id, {
+    document,
+    updatedAt: now,
+    _syncStatus: 'pending',
+    _lastModified: now,
+  })
+}
+
+export async function deleteEvent(id: number): Promise<void> {
+  const now = Date.now()
+  await db.events.update(id, {
+    deleted: true,
+    _syncStatus: 'pending',
+    _lastModified: now,
+  })
+
+  await logOperation(TABLE, id, 'deleted', 'false', 'true')
+}

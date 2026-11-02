@@ -1,0 +1,408 @@
+using System.Diagnostics;
+using System.IO.Compression;
+using System.Reflection;
+using Microsoft.Win32;
+
+namespace OCStudio.Installer;
+
+internal static class Program
+{
+    [STAThread]
+    private static void Main(string[] args)
+    {
+        try
+        {
+            // Avoid EnableVisualStyles' activation-context temp extraction: in
+            // some locked-down Windows profiles that file cannot be read.
+            Application.SetHighDpiMode(HighDpiMode.SystemAware);
+            Log("started");
+
+            if (args.Any((arg) => string.Equals(arg, "--uninstall", StringComparison.OrdinalIgnoreCase)))
+            {
+                Uninstall();
+                return;
+            }
+
+            var installIndex = Array.FindIndex(
+                args,
+                (arg) => string.Equals(arg, "--install", StringComparison.OrdinalIgnoreCase));
+            var silent = args.Any((arg) => string.Equals(arg, "--silent", StringComparison.OrdinalIgnoreCase));
+            var form = new InstallerForm(silent);
+            if (installIndex >= 0 && installIndex + 1 < args.Length)
+            {
+                form.StartInstall(args[installIndex + 1]);
+            }
+            Log("form created");
+            Application.Run(form);
+        }
+        catch (Exception ex)
+        {
+            Log(ex.ToString());
+            MessageBox.Show(ex.ToString(), "OC Studio 安装程序", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+    }
+
+    internal static void Log(string message)
+    {
+        try
+        {
+            File.AppendAllText(
+                Path.Combine(Path.GetTempPath(), "ocstudio-setup.log"),
+                $"[{DateTime.Now:HH:mm:ss}] {message}{Environment.NewLine}");
+        }
+        catch
+        {
+            // ignore
+        }
+    }
+
+    private static void Uninstall()
+    {
+        var dir = AppContext.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar);
+        var answer = MessageBox.Show(
+            $"确定卸载 OC Studio 吗？\n\n安装位置：{dir}\n\n个人创作数据保存在浏览器本地目录中，不会被删除。",
+            "卸载 OC Studio",
+            MessageBoxButtons.YesNo,
+            MessageBoxIcon.Question);
+        if (answer != DialogResult.Yes) return;
+
+        var desktop = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+        TryDelete(Path.Combine(desktop, "OC Studio.lnk"));
+
+        var programs = Environment.GetFolderPath(Environment.SpecialFolder.Programs);
+        var menuDir = Path.Combine(programs, "OC Studio");
+        TryDelete(Path.Combine(menuDir, "OC Studio.lnk"));
+        TryDelete(Path.Combine(menuDir, "卸载 OC Studio.lnk"));
+        TryDeleteDirectory(menuDir);
+
+        using (var key = Registry.CurrentUser.OpenSubKey(
+                   @"Software\Microsoft\Windows\CurrentVersion\Uninstall\OCStudio",
+                   writable: true))
+        {
+            key?.Dispose();
+        }
+        Registry.CurrentUser.DeleteSubKeyTree(
+            @"Software\Microsoft\Windows\CurrentVersion\Uninstall\OCStudio",
+            throwOnMissingSubKey: false);
+
+        // The running executable cannot remove itself; let cmd finish after exit.
+        var command = $"timeout /t 2 >nul & rmdir /s /q \"{dir}\"";
+        Process.Start(new ProcessStartInfo("cmd.exe", $"/c {command}")
+        {
+            CreateNoWindow = true,
+            UseShellExecute = false,
+            WindowStyle = ProcessWindowStyle.Hidden,
+        });
+        Application.Exit();
+    }
+
+    internal static void TryDelete(string path)
+    {
+        try
+        {
+            if (File.Exists(path)) File.Delete(path);
+        }
+        catch
+        {
+            // best effort
+        }
+    }
+
+    internal static void TryDeleteDirectory(string path)
+    {
+        try
+        {
+            if (Directory.Exists(path)) Directory.Delete(path, recursive: true);
+        }
+        catch
+        {
+            // best effort
+        }
+    }
+}
+
+internal sealed class InstallerForm : Form
+{
+    private const string PayloadResource = "OCStudio.payload.zip";
+
+    private readonly TextBox _pathBox = new();
+    private readonly CheckBox _desktopShortcut = new();
+    private readonly Button _installButton = new();
+    private readonly Button _browseButton = new();
+    private readonly ProgressBar _progress = new();
+    private readonly Label _status = new();
+    private readonly bool _silent;
+
+    public InstallerForm(bool silent = false)
+    {
+        _silent = silent;
+        Shown += (_, _) => { if (_silent) Hide(); };
+        Text = "OC Studio 安装程序";
+        StartPosition = FormStartPosition.CenterScreen;
+        FormBorderStyle = FormBorderStyle.FixedDialog;
+        MaximizeBox = false;
+        MinimizeBox = false;
+        ClientSize = new Size(560, 300);
+        BackColor = Color.FromArgb(247, 244, 239);
+        Font = new Font("Segoe UI", 9f);
+        Padding = new Padding(24);
+
+        var title = new Label
+        {
+            Text = "OC Studio",
+            Font = new Font("Segoe UI", 20f, FontStyle.Bold),
+            ForeColor = Color.FromArgb(45, 42, 38),
+            AutoSize = true,
+            Location = new Point(28, 24),
+        };
+
+        var subtitle = new Label
+        {
+            Text = "本地优先的原创角色与世界观创作工作台",
+            ForeColor = Color.FromArgb(125, 118, 108),
+            AutoSize = true,
+            Location = new Point(31, 62),
+        };
+
+        var pathLabel = new Label
+        {
+            Text = "安装位置",
+            ForeColor = Color.FromArgb(70, 65, 58),
+            AutoSize = true,
+            Location = new Point(31, 105),
+        };
+
+        _pathBox.Location = new Point(31, 128);
+        _pathBox.Size = new Size(410, 27);
+        _pathBox.Text = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "Programs",
+            "OC Studio");
+
+        _browseButton.Text = "更改…";
+        _browseButton.Location = new Point(449, 127);
+        _browseButton.Size = new Size(80, 29);
+        _browseButton.Click += BrowseClicked;
+
+        _desktopShortcut.Text = "在桌面创建快捷方式";
+        _desktopShortcut.Checked = true;
+        _desktopShortcut.AutoSize = true;
+        _desktopShortcut.Location = new Point(31, 168);
+        _desktopShortcut.ForeColor = Color.FromArgb(70, 65, 58);
+
+        _progress.Location = new Point(31, 204);
+        _progress.Size = new Size(498, 8);
+        _progress.Style = ProgressBarStyle.Continuous;
+
+        _status.Text = "准备安装";
+        _status.ForeColor = Color.FromArgb(125, 118, 108);
+        _status.AutoSize = true;
+        _status.Location = new Point(31, 220);
+
+        _installButton.Text = "安装";
+        _installButton.Location = new Point(397, 248);
+        _installButton.Size = new Size(132, 34);
+        _installButton.BackColor = Color.FromArgb(82, 72, 62);
+        _installButton.ForeColor = Color.White;
+        _installButton.FlatStyle = FlatStyle.Flat;
+        _installButton.FlatAppearance.BorderSize = 0;
+        _installButton.Click += InstallClicked;
+
+        Controls.AddRange(new Control[]
+        {
+            title,
+            subtitle,
+            pathLabel,
+            _pathBox,
+            _browseButton,
+            _desktopShortcut,
+            _progress,
+            _status,
+            _installButton,
+        });
+    }
+
+    public void StartInstall(string target)
+    {
+        _pathBox.Text = target;
+        BeginInvoke(() => InstallClicked(this, EventArgs.Empty));
+    }
+
+    private void BrowseClicked(object? sender, EventArgs e)
+    {
+        using var dialog = new FolderBrowserDialog
+        {
+            Description = "选择 OC Studio 的安装位置",
+            UseDescriptionForTitle = true,
+            SelectedPath = Directory.Exists(_pathBox.Text)
+                ? _pathBox.Text
+                : Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            ShowNewFolderButton = true,
+        };
+        if (dialog.ShowDialog(this) == DialogResult.OK)
+        {
+            _pathBox.Text = Path.Combine(dialog.SelectedPath, "OC Studio");
+        }
+    }
+
+    private async void InstallClicked(object? sender, EventArgs e)
+    {
+        var target = _pathBox.Text.Trim();
+        if (string.IsNullOrWhiteSpace(target))
+        {
+            MessageBox.Show(this, "请选择安装位置。", "OC Studio", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            return;
+        }
+
+        try
+        {
+            Directory.CreateDirectory(target);
+            _installButton.Enabled = false;
+            _browseButton.Enabled = false;
+            _pathBox.Enabled = false;
+            _status.Text = "正在安装，请稍候…";
+
+            await Task.Run(() => ExtractPayload(target, progress => BeginInvoke(() =>
+            {
+                _progress.Value = Math.Clamp(progress, 0, 100);
+                _status.Text = $"正在安装… {progress}%";
+            })));
+
+            var exe = Path.Combine(target, "OCStudio.exe");
+            var uninstaller = Path.Combine(target, "Uninstall.exe");
+            var self = Environment.ProcessPath;
+            if (!string.IsNullOrEmpty(self) && File.Exists(self))
+            {
+                File.Copy(self, uninstaller, overwrite: true);
+            }
+
+            try
+            {
+                CreateShortcuts(target, exe, uninstaller);
+            }
+            catch (Exception shortcutError)
+            {
+                Program.Log($"shortcut failed: {shortcutError}");
+            }
+
+            try
+            {
+                WriteUninstallEntry(target, exe, uninstaller);
+            }
+            catch (Exception registryError)
+            {
+                Program.Log($"registry failed: {registryError}");
+            }
+
+            _progress.Value = 100;
+            _status.Text = "安装完成";
+            if (_silent)
+            {
+                Close();
+                return;
+            }
+
+            MessageBox.Show(this, "OC Studio 安装完成。", "OC Studio", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+            if (MessageBox.Show(this, "现在启动 OC Studio 吗？", "OC Studio", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
+            {
+                Process.Start(new ProcessStartInfo(exe) { WorkingDirectory = target, UseShellExecute = true });
+            }
+            Close();
+        }
+        catch (UnauthorizedAccessException)
+        {
+            _status.Text = "没有写入权限";
+            MessageBox.Show(this, "当前安装位置没有写入权限，请选择其他文件夹。", "OC Studio", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            _installButton.Enabled = true;
+            _browseButton.Enabled = true;
+            _pathBox.Enabled = true;
+        }
+        catch (Exception ex)
+        {
+            _status.Text = "安装失败";
+            MessageBox.Show(this, $"安装失败：\n{ex.Message}", "OC Studio", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            _installButton.Enabled = true;
+            _browseButton.Enabled = true;
+            _pathBox.Enabled = true;
+        }
+    }
+
+    private static void ExtractPayload(string target, Action<int> progress)
+    {
+        using var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(PayloadResource)
+            ?? throw new InvalidOperationException("安装包资源缺失。");
+        using var archive = new ZipArchive(stream, ZipArchiveMode.Read);
+        var entries = archive.Entries;
+        for (var i = 0; i < entries.Count; i++)
+        {
+            var entry = entries[i];
+            var destination = Path.GetFullPath(Path.Combine(target, entry.FullName));
+            if (!destination.StartsWith(Path.GetFullPath(target), StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+            if (string.IsNullOrEmpty(entry.Name))
+            {
+                Directory.CreateDirectory(destination);
+            }
+            else
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
+                entry.ExtractToFile(destination, overwrite: true);
+            }
+            if (i % 20 == 0 || i == entries.Count - 1)
+            {
+                progress((int)((i + 1) * 100.0 / entries.Count));
+            }
+        }
+    }
+
+    private void CreateShortcuts(string target, string exe, string uninstaller)
+    {
+        var shellType = Type.GetTypeFromProgID("WScript.Shell")
+            ?? throw new InvalidOperationException("无法创建快捷方式。");
+        dynamic shell = Activator.CreateInstance(shellType)!;
+
+        if (_desktopShortcut.Checked)
+        {
+            var desktop = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+            CreateShortcut(shell, Path.Combine(desktop, "OC Studio.lnk"), exe, target);
+        }
+
+        var programs = Environment.GetFolderPath(Environment.SpecialFolder.Programs);
+        var menuDir = Path.Combine(programs, "OC Studio");
+        Directory.CreateDirectory(menuDir);
+        CreateShortcut(shell, Path.Combine(menuDir, "OC Studio.lnk"), exe, target);
+
+        dynamic uninstallLink = shell.CreateShortcut(Path.Combine(menuDir, "卸载 OC Studio.lnk"));
+        uninstallLink.TargetPath = uninstaller;
+        uninstallLink.Arguments = "--uninstall";
+        uninstallLink.WorkingDirectory = target;
+        uninstallLink.Save();
+    }
+
+    private static void CreateShortcut(dynamic shell, string linkPath, string exe, string workingDirectory)
+    {
+        dynamic link = shell.CreateShortcut(linkPath);
+        link.TargetPath = exe;
+        link.WorkingDirectory = workingDirectory;
+        link.IconLocation = $"{exe},0";
+        link.Description = "OC Studio 本地优先创作工作台";
+        link.Save();
+    }
+
+    private static void WriteUninstallEntry(string target, string exe, string uninstaller)
+    {
+        using var key = Registry.CurrentUser.CreateSubKey(
+            @"Software\Microsoft\Windows\CurrentVersion\Uninstall\OCStudio");
+        key.SetValue("DisplayName", "OC Studio");
+        key.SetValue("DisplayVersion", "0.18.0");
+        key.SetValue("Publisher", "OC Studio");
+        key.SetValue("InstallLocation", target);
+        key.SetValue("DisplayIcon", $"{exe},0");
+        key.SetValue("UninstallString", $"\"{uninstaller}\" --uninstall");
+        key.SetValue("NoModify", 1, RegistryValueKind.DWord);
+        key.SetValue("NoRepair", 1, RegistryValueKind.DWord);
+    }
+}
