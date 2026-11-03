@@ -68,22 +68,21 @@ internal static class Program
 
         var desktop = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
         TryDelete(Path.Combine(desktop, "OC editor.lnk"));
+        TryDelete(Path.Combine(desktop, "OC Studio.lnk"));
 
         var programs = Environment.GetFolderPath(Environment.SpecialFolder.Programs);
-        var menuDir = Path.Combine(programs, "OC editor");
-        TryDelete(Path.Combine(menuDir, "OC editor.lnk"));
-        TryDelete(Path.Combine(menuDir, "卸载 OC editor.lnk"));
-        TryDeleteDirectory(menuDir);
-
-        using (var key = Registry.CurrentUser.OpenSubKey(
-                   @"Software\Microsoft\Windows\CurrentVersion\Uninstall\OCEditor",
-                   writable: true))
+        foreach (var folder in new[] { "OC editor", "OC Studio" })
         {
-            key?.Dispose();
+            var menuDir = Path.Combine(programs, folder);
+            TryDeleteDirectory(menuDir);
         }
-        Registry.CurrentUser.DeleteSubKeyTree(
-            @"Software\Microsoft\Windows\CurrentVersion\Uninstall\OCEditor",
-            throwOnMissingSubKey: false);
+
+        foreach (var product in new[] { "OCEditor", "OCStudio" })
+        {
+            Registry.CurrentUser.DeleteSubKeyTree(
+                $@"Software\Microsoft\Windows\CurrentVersion\Uninstall\{product}",
+                throwOnMissingSubKey: false);
+        }
 
         // The running executable cannot remove itself; let cmd finish after exit.
         var command = $"timeout /t 2 >nul & rmdir /s /q \"{dir}\"";
@@ -129,6 +128,7 @@ internal sealed class InstallerForm : Form
     private readonly CheckBox _desktopShortcut = new();
     private readonly Button _installButton = new();
     private readonly Button _browseButton = new();
+    private readonly Button _uninstallButton = new();
     private readonly ProgressBar _progress = new();
     private readonly Label _status = new();
     private readonly bool _silent;
@@ -208,6 +208,14 @@ internal sealed class InstallerForm : Form
         _installButton.FlatAppearance.BorderSize = 0;
         _installButton.Click += InstallClicked;
 
+        _uninstallButton.Text = "卸载已安装版本";
+        _uninstallButton.Location = new Point(31, 248);
+        _uninstallButton.Size = new Size(150, 34);
+        _uninstallButton.FlatStyle = FlatStyle.Flat;
+        _uninstallButton.FlatAppearance.BorderColor = Color.FromArgb(196, 186, 174);
+        _uninstallButton.ForeColor = Color.FromArgb(96, 88, 78);
+        _uninstallButton.Click += UninstallClicked;
+
         Controls.AddRange(new Control[]
         {
             title,
@@ -219,6 +227,7 @@ internal sealed class InstallerForm : Form
             _progress,
             _status,
             _installButton,
+            _uninstallButton,
         });
     }
 
@@ -245,6 +254,122 @@ internal sealed class InstallerForm : Form
         }
     }
 
+    /// <summary>
+    /// 覆盖安装前先清掉旧版：同目录直接删程序文件，别的目录（例如旧版 OC Studio）连快捷方式、
+    /// 注册表卸载项一起清掉；个人数据不在安装目录里，不会被删。
+    /// </summary>
+    private static void RemoveInstalledVersions(string? keepTarget)
+    {
+        foreach (var product in new[] { "OCEditor", "OCStudio" })
+        {
+            string? location = null;
+            using (var key = Registry.CurrentUser.OpenSubKey(
+                       $@"Software\Microsoft\Windows\CurrentVersion\Uninstall\{product}"))
+            {
+                location = key?.GetValue("InstallLocation") as string;
+            }
+
+            if (!string.IsNullOrWhiteSpace(location))
+            {
+                try
+                {
+                    Program.TryDeleteDirectory(location);
+                    Program.Log($"removed previous install: {location}");
+                }
+                catch (Exception ex)
+                {
+                    Program.Log($"remove previous failed ({location}): {ex.Message}");
+                }
+            }
+
+            if (string.Equals(keepTarget, location, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            try
+            {
+                Registry.CurrentUser.DeleteSubKeyTree(
+                    $@"Software\Microsoft\Windows\CurrentVersion\Uninstall\{product}",
+                    throwOnMissingSubKey: false);
+            }
+            catch (Exception ex)
+            {
+                Program.Log($"remove uninstall key failed ({product}): {ex.Message}");
+            }
+        }
+
+        RemoveShortcuts();
+    }
+
+    private static void RemoveShortcuts()
+    {
+        var desktop = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+        foreach (var name in new[] { "OC editor.lnk", "OC Studio.lnk" })
+        {
+            Program.TryDelete(Path.Combine(desktop, name));
+        }
+
+        var programs = Environment.GetFolderPath(Environment.SpecialFolder.Programs);
+        foreach (var folder in new[] { "OC editor", "OC Studio" })
+        {
+            Program.TryDeleteDirectory(Path.Combine(programs, folder));
+        }
+    }
+
+    private static void StopRunningApp()
+    {
+        foreach (var name in new[] { "OCeditor", "OCStudio" })
+        {
+            foreach (var process in Process.GetProcessesByName(name))
+            {
+                try
+                {
+                    process.Kill(entireProcessTree: true);
+                    process.WaitForExit(5000);
+                }
+                catch
+                {
+                    // 关闭失败就交给后面的删除逻辑重试
+                }
+            }
+        }
+    }
+
+    private void UninstallClicked(object? sender, EventArgs e)
+    {
+        var answer = MessageBox.Show(
+            this,
+            "确定卸载已安装的 OC editor 吗？\n\n" +
+            "只会删除程序、快捷方式和卸载项；\n" +
+            "个人创作数据（%LOCALAPPDATA%\\OC editor\\WebView2）会保留。",
+            "卸载 OC editor",
+            MessageBoxButtons.YesNo,
+            MessageBoxIcon.Question);
+        if (answer != DialogResult.Yes) return;
+
+        try
+        {
+            _uninstallButton.Enabled = false;
+            _status.Text = "正在卸载…";
+            StopRunningApp();
+            RemoveInstalledVersions(null);
+            _status.Text = "已卸载";
+            MessageBox.Show(this, "已卸载 OC editor，个人数据已保留。", "OC editor",
+                MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+        catch (Exception ex)
+        {
+            Program.Log($"uninstall failed: {ex}");
+            MessageBox.Show(this, $"卸载失败：\n{ex.Message}", "OC editor",
+                MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+        finally
+        {
+            _uninstallButton.Enabled = true;
+        }
+    }
+
     private async void InstallClicked(object? sender, EventArgs e)
     {
         var target = _pathBox.Text.Trim();
@@ -256,6 +381,10 @@ internal sealed class InstallerForm : Form
 
         try
         {
+            _status.Text = "正在清理旧版本…";
+            StopRunningApp();
+            RemoveInstalledVersions(target);
+
             Directory.CreateDirectory(target);
             _installButton.Enabled = false;
             _browseButton.Enabled = false;
@@ -397,7 +526,7 @@ internal sealed class InstallerForm : Form
         using var key = Registry.CurrentUser.CreateSubKey(
             @"Software\Microsoft\Windows\CurrentVersion\Uninstall\OCEditor");
         key.SetValue("DisplayName", "OC editor");
-        key.SetValue("DisplayVersion", "0.18.2");
+        key.SetValue("DisplayVersion", "0.18.3");
         key.SetValue("Publisher", "OC editor");
         key.SetValue("InstallLocation", target);
         key.SetValue("DisplayIcon", $"{exe},0");
