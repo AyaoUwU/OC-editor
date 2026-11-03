@@ -2,9 +2,14 @@
 
 **最新版：v0.18.1** → [GitHub Releases](https://github.com/nekibud/OC-editor/releases/latest)
 
+- [便携版 OC-Studio-0.18.1-portable-win64.zip](https://github.com/nekibud/OC-editor/releases/download/v0.18.1/OC-Studio-0.18.1-portable-win64.zip) ← **推荐：解压即用，不需要安装**
 - [Windows 安装程序 OC-Studio-Setup-0.18.1.exe](https://github.com/nekibud/OC-editor/releases/download/v0.18.1/OC-Studio-Setup-0.18.1.exe)
 - [MSI 安装包 OC-Studio-Setup-0.18.1.msi](https://github.com/nekibud/OC-editor/releases/download/v0.18.1/OC-Studio-Setup-0.18.1.msi)
 - [安装说明 / SHA256](https://github.com/nekibud/OC-editor/releases/download/v0.18.1/INSTALL-Windows10.txt)
+
+> 安装版如果报“无法打开此安装程序包”（错误 1620），请改用上面的便携版 zip：
+> 那是电脑上的 Windows Installer 被禁用或被安全软件拦截，并非安装包损坏。
+
 
 > 0.18.1 新增：角色文件夹、关系线 12 色与四种箭头、多条关系线、武器/宠物角色模板、OC 动画、关系图 PNG 导出、Windows 10 安装适配。
 
