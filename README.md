@@ -1,8 +1,19 @@
+## 下载
+
+**最新版：v0.18.1** → [GitHub Releases](https://github.com/nekibud/OC-editor/releases/latest)
+
+- [Windows 安装程序 OC-Studio-Setup-0.18.1.exe](https://github.com/nekibud/OC-editor/releases/download/v0.18.1/OC-Studio-Setup-0.18.1.exe)
+- [MSI 安装包 OC-Studio-Setup-0.18.1.msi](https://github.com/nekibud/OC-editor/releases/download/v0.18.1/OC-Studio-Setup-0.18.1.msi)
+- [安装说明 / SHA256](https://github.com/nekibud/OC-editor/releases/download/v0.18.1/INSTALL-Windows10.txt)
+
+> 0.18.1 新增：角色文件夹、关系线 12 色与四种箭头、多条关系线、武器/宠物角色模板、OC 动画、关系图 PNG 导出、Windows 10 安装适配。
+
+---
 # OC editor
 
 本地优先的原创角色（OC）与世界观创作工作台。
 
-当前版本：**v0.18.0-alpha · local-first**
+当前版本：**v0.18.1 · local-first**
 
 本仓库在 OC-Studio 原有角色 / 事件 / 国家 / 词条 / 时间线 / 关系图谱骨架上增量扩展，
 新增了**程序化世界地图生成器**与**可折叠树形表格**。运行时完全离线：无账号、无云同步、
