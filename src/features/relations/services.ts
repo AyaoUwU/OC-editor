@@ -7,8 +7,10 @@ import type {
   RelationKind,
   RelationRecord,
 } from '@/types'
+import { characterCountry, countryColor } from '@/features/countries/colors'
 import type { GraphEdge, GraphNode } from './types'
 import type { RelationArrow } from './style'
+import { migrateLegacyRelationStyles } from './legacy-style-migration'
 
 const MANAGED_KINDS: RelationKind[] = [
   'character',
@@ -442,6 +444,15 @@ export async function syncRelationsFromEntities(): Promise<RelationRecord[]> {
 
   if (changes.length > 0) {
     await db.relations.bulkPut(changes)
+  }
+
+  if (typeof window !== 'undefined') {
+    await migrateLegacyRelationStyles(window.localStorage, async (id, style) => {
+      const relation = await db.relations.get(id)
+      if (!relation || relation.deleted) return false
+      await db.relations.update(id, style)
+      return true
+    })
   }
 
   return [...projected.values()]
@@ -951,6 +962,9 @@ export async function buildGraphData(): Promise<{ nodes: GraphNode[]; edges: Gra
       data.avatarUrl = character.avatarUrl
       data.qAvatarUrl = character.qAvatarUrl ?? ''
       data.accentColor = character.accentColor ?? ''
+      const country = characterCountry(character, countries)
+      data.countryColor = country ? countryColor(country) : undefined
+      data.countryName = country?.name
       data.entityKind = character.entityKind ?? 'character'
     }
   }

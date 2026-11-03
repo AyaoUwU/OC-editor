@@ -1,4 +1,6 @@
 import { db } from '@/lib/db'
+import { loadCharacterFolders, saveCharacterFolders } from '@/features/characters/folders'
+import { parseCharacterFolders, planCharacterFolderImport } from '@/features/characters/folder-backup'
 import type { QueryClient } from '@tanstack/react-query'
 import type { Table } from 'dexie'
 
@@ -12,6 +14,7 @@ interface ImportPayload {
     worldEntries: unknown[]
     tags: unknown[]
     maps?: unknown[]
+    characterFolders?: unknown[]
   }
 }
 
@@ -71,6 +74,8 @@ export function validateImportData(json: unknown): ImportSummary {
   if (data.maps !== undefined && !Array.isArray(data.maps)) {
     throw new Error('data.maps 必须是数组')
   }
+
+  parseCharacterFolders(data.characterFolders)
 
   return {
     characters: (data.characters as unknown[]).length,
@@ -196,7 +201,13 @@ export async function importData(
 ): Promise<ImportResult> {
   validateImportData(json)
   const sanitized = stripRemoteUrls(json) as ImportPayload
-  const records = sanitized.data
+  const folderPlan = planCharacterFolderImport(
+    loadCharacterFolders(),
+    parseCharacterFolders(sanitized.data.characterFolders),
+    sanitized.data.characters,
+    strategy,
+  )
+  const records = { ...sanitized.data, characters: folderPlan.characters }
   const maps = Array.isArray(records.maps) ? records.maps : []
 
   if (strategy === 'replace') {
@@ -223,6 +234,7 @@ export async function importData(
       records.worldEntries.length +
       records.tags.length +
       maps.length
+    saveCharacterFolders(folderPlan.folders)
     queryClient?.invalidateQueries()
     return { added: total, skipped: 0, overwritten: 0 }
   }
@@ -239,6 +251,7 @@ export async function importData(
     totalOverwritten += result.overwritten
   }
 
+  saveCharacterFolders(folderPlan.folders)
   queryClient?.invalidateQueries()
 
   return { added: totalAdded, skipped: totalSkipped, overwritten: totalOverwritten }

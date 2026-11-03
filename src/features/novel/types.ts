@@ -5,6 +5,9 @@ export type ChapterStatus = 'draft' | 'revising' | 'done'
 export interface NovelNote {
   id: string
   text: string
+  title?: string
+  content?: string
+  inspirationId?: string
 }
 
 export interface NovelChapter {
@@ -18,6 +21,7 @@ export interface NovelChapter {
 export interface Novel {
   id?: number
   title: string
+  fontFamily?: string
   author: string
   synopsis: string
   coverUrl?: string

@@ -28,6 +28,7 @@ export function loadCharacterFolders(): CharacterFolder[] {
   if (typeof window === 'undefined') return []
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY)
+      ?? window.localStorage.getItem('oc-studio-character-folders-v1')
     if (!raw) return []
     const parsed = JSON.parse(raw) as CharacterFolder[]
     if (!Array.isArray(parsed)) return []
@@ -45,7 +46,7 @@ export function loadCharacterFolders(): CharacterFolder[] {
   }
 }
 
-function saveCharacterFolders(folders: CharacterFolder[]): void {
+export function saveCharacterFolders(folders: CharacterFolder[]): void {
   if (typeof window === 'undefined') return
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(folders))
@@ -143,14 +144,17 @@ export async function moveCharactersToFolder(
 ): Promise<void> {
   if (characterIds.length === 0) return
   const now = Date.now()
-  await db.characters
-    .where('id')
-    .anyOf(characterIds)
-    .modify((character) => {
-      character.folderId = folderId
-      character.updatedAt = now
-      character._syncStatus = 'pending'
-    })
+  await db.transaction('rw', db.characters, async () => {
+    await db.characters
+      .where('id')
+      .anyOf(characterIds)
+      .and(character => !character.deleted)
+      .modify((character) => {
+        character.folderId = folderId
+        character.updatedAt = now
+        character._syncStatus = 'pending'
+      })
+  })
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new Event('data-updated'))
   }
