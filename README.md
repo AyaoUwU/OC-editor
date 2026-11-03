@@ -1,24 +1,24 @@
 ## 下载
 
-**最新版：v0.18.1** → [GitHub Releases](https://github.com/nekibud/OC-editor/releases/latest)
+**最新版：v0.18.2（产品名统一为 OC editor）** → [GitHub Releases](https://github.com/nekibud/OC-editor/releases/latest)
 
-- [便携版 OC-Studio-0.18.1-portable-win64.zip](https://github.com/nekibud/OC-editor/releases/download/v0.18.1/OC-Studio-0.18.1-portable-win64.zip) ← **推荐：解压即用，不需要安装**
-- [Windows 安装程序 OC-Studio-Setup-0.18.1.exe](https://github.com/nekibud/OC-editor/releases/download/v0.18.1/OC-Studio-Setup-0.18.1.exe)
-- [MSI 安装包 OC-Studio-Setup-0.18.1.msi](https://github.com/nekibud/OC-editor/releases/download/v0.18.1/OC-Studio-Setup-0.18.1.msi)
-- [安装说明 / SHA256](https://github.com/nekibud/OC-editor/releases/download/v0.18.1/INSTALL-Windows10.txt)
+- [便携版 OC-editor-0.18.2-portable-win64.zip](https://github.com/nekibud/OC-editor/releases/download/v0.18.2/OC-editor-0.18.2-portable-win64.zip) ← **推荐：解压即用，不需要安装**
+- [安装程序 OC-editor-0.18.2-Setup.exe](https://github.com/nekibud/OC-editor/releases/download/v0.18.2/OC-editor-0.18.2-Setup.exe)
+- [MSI 安装包 OC-editor-0.18.2.msi](https://github.com/nekibud/OC-editor/releases/download/v0.18.2/OC-editor-0.18.2.msi)
+- [安装说明 / SHA256](https://github.com/nekibud/OC-editor/releases/download/v0.18.2/INSTALL-Windows10.txt)
 
-> 安装版已在 0.18.1 重做为“自带解压安装”，不再调用 Windows Installer；
-> 如果仍报“无法打开此安装程序包”（错误 1620），说明下载的是旧版安装包，请重新下载，或直接用便携版 zip。
-
-
-> 0.18.1 新增：角色文件夹、关系线 12 色与四种箭头、多条关系线、武器/宠物角色模板、OC 动画、关系图 PNG 导出、Windows 10 安装适配。
+> **0.18.2 改名**：产品名由 OC Studio 统一为 **OC editor**（程序 OCeditor.exe、快捷方式、安装目录、卸载项）。
+> 旧数据在首次启动时自动从 %LOCALAPPDATA%\OC Studio\WebView2 复制到 %LOCALAPPDATA%\OC editor\WebView2，不会丢。
+>
+> 安装版如果报“无法打开此安装程序包”（错误 1620）：那是系统里的 Windows Installer 被禁用/被拦截，
+> 请用便携版 zip 或新版 Setup（二者都不经过 Windows Installer）。
 
 ---
 # OC editor
 
 本地优先的原创角色（OC）与世界观创作工作台。
 
-当前版本：**v0.18.1 · local-first**
+当前版本：**v0.18.2 · local-first**
 
 本仓库在 OC-Studio 原有角色 / 事件 / 国家 / 词条 / 时间线 / 关系图谱骨架上增量扩展，
 新增了**程序化世界地图生成器**与**可折叠树形表格**。运行时完全离线：无账号、无云同步、
