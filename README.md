@@ -1,24 +1,23 @@
 ## 下载
 
-**最新版：v0.18.2（产品名统一为 OC editor）** → [GitHub Releases](https://github.com/nekibud/OC-editor/releases/latest)
+**最新版：v0.18.3** → [GitHub Releases](https://github.com/nekibud/OC-editor/releases/latest)
 
-- [便携版 OC-editor-0.18.2-portable-win64.zip](https://github.com/nekibud/OC-editor/releases/download/v0.18.2/OC-editor-0.18.2-portable-win64.zip) ← **推荐：解压即用，不需要安装**
-- [安装程序 OC-editor-0.18.2-Setup.exe](https://github.com/nekibud/OC-editor/releases/download/v0.18.2/OC-editor-0.18.2-Setup.exe)
-- [MSI 安装包 OC-editor-0.18.2.msi](https://github.com/nekibud/OC-editor/releases/download/v0.18.2/OC-editor-0.18.2.msi)
-- [安装说明 / SHA256](https://github.com/nekibud/OC-editor/releases/download/v0.18.2/INSTALL-Windows10.txt)
+- [便携版 OC-editor-0.18.3-portable-win64.zip](https://github.com/nekibud/OC-editor/releases/download/v0.18.3/OC-editor-0.18.3-portable-win64.zip) ← **推荐：解压即用，含「卸载 OC editor.cmd」**
+- [安装程序 OC-editor-0.18.3-Setup.exe](https://github.com/nekibud/OC-editor/releases/download/v0.18.3/OC-editor-0.18.3-Setup.exe)
+- [MSI 安装包 OC-editor-0.18.3.msi](https://github.com/nekibud/OC-editor/releases/download/v0.18.3/OC-editor-0.18.3.msi)
+- [安装说明 / SHA256](https://github.com/nekibud/OC-editor/releases/download/v0.18.3/INSTALL-Windows10.txt)
 
-> **0.18.2 改名**：产品名由 OC Studio 统一为 **OC editor**（程序 OCeditor.exe、快捷方式、安装目录、卸载项）。
-> 旧数据在首次启动时自动从 %LOCALAPPDATA%\OC Studio\WebView2 复制到 %LOCALAPPDATA%\OC editor\WebView2，不会丢。
+> **卸载**：设置 → 应用 → OC editor → 卸载；或开始菜单「卸载 OC editor」；便携版双击文件夹里的
+> 「卸载 OC editor.cmd」。只删程序，个人创作数据保留。
 >
-> 安装版如果报“无法打开此安装程序包”（错误 1620）：那是系统里的 Windows Installer 被禁用/被拦截，
-> 请用便携版 zip 或新版 Setup（二者都不经过 Windows Installer）。
+> **升级**：直接运行新版安装包即可，安装前会自动清理旧版（含改名前的 OC Studio），不会留两份程序。
 
 ---
 # OC editor
 
 本地优先的原创角色（OC）与世界观创作工作台。
 
-当前版本：**v0.18.2 · local-first**
+当前版本：**v0.18.3 · local-first**
 
 本仓库在 OC-Studio 原有角色 / 事件 / 国家 / 词条 / 时间线 / 关系图谱骨架上增量扩展，
 新增了**程序化世界地图生成器**与**可折叠树形表格**。运行时完全离线：无账号、无云同步、
