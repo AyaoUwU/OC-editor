@@ -7,7 +7,7 @@ namespace OCStudio.Launcher;
 
 internal static class Program
 {
-    private const string SingleInstanceName = @"Local\OCStudio.SingleInstance";
+    private const string SingleInstanceName = @"Local\OCEditor.SingleInstance";
     private const int SwRestore = 9;
 
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
@@ -28,9 +28,9 @@ internal static class Program
         if (!OperatingSystem.IsWindowsVersionAtLeast(10, 0, 17763))
         {
             MessageBox.Show(
-                "OC Studio 需要 64 位 Windows 10（1809 或更高版本）。\n\n" +
+                "OC editor 需要 64 位 Windows 10（1809 或更高版本）。\n\n" +
                 "当前系统版本过低，请先升级 Windows 再运行。",
-                "OC Studio",
+                "OC editor",
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Warning);
             return;
@@ -43,7 +43,7 @@ internal static class Program
             out var createdNew);
         if (!createdNew)
         {
-            var existing = FindWindow(null, "OC Studio");
+            var existing = FindWindow(null, "OC editor");
             if (existing != IntPtr.Zero)
             {
                 ShowWindow(existing, SwRestore);
@@ -52,8 +52,8 @@ internal static class Program
             else
             {
                 MessageBox.Show(
-                    "OC Studio 已经在运行，请查看任务栏或已打开的窗口。",
-                    "OC Studio",
+                    "OC editor 已经在运行，请查看任务栏或已打开的窗口。",
+                    "OC editor",
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Information);
             }

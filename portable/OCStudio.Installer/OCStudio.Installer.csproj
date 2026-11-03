@@ -6,7 +6,7 @@
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <AssemblyName>OCStudioSetupFinal</AssemblyName>
+    <AssemblyName>OCeditorSetup</AssemblyName>
     <RootNamespace>OCStudio.Installer</RootNamespace>
     <ApplicationIcon>..\ocstudio.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
@@ -19,11 +19,11 @@
     <EnableCompressionInSingleFile>false</EnableCompressionInSingleFile>
     <DebugType>None</DebugType>
     <DebugSymbols>false</DebugSymbols>
-    <Version>0.18.1</Version>
-    <FileVersion>0.18.1.0</FileVersion>
-    <AssemblyTitle>OC Studio 安装程序</AssemblyTitle>
-    <Product>OC Studio</Product>
-    <Company>OC Studio</Company>
+    <Version>0.18.2</Version>
+    <FileVersion>0.18.2.0</FileVersion>
+    <AssemblyTitle>OC editor 安装程序</AssemblyTitle>
+    <Product>OC editor</Product>
+    <Company>OC editor</Company>
   </PropertyGroup>
 
   <ItemGroup>

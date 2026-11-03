@@ -38,7 +38,7 @@ internal static class Program
         catch (Exception ex)
         {
             Log(ex.ToString());
-            MessageBox.Show(ex.ToString(), "OC Studio 安装程序", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show(ex.ToString(), "OC editor 安装程序", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 
@@ -60,29 +60,29 @@ internal static class Program
     {
         var dir = AppContext.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar);
         var answer = MessageBox.Show(
-            $"确定卸载 OC Studio 吗？\n\n安装位置：{dir}\n\n个人创作数据保存在浏览器本地目录中，不会被删除。",
-            "卸载 OC Studio",
+            $"确定卸载 OC editor 吗？\n\n安装位置：{dir}\n\n个人创作数据保存在浏览器本地目录中，不会被删除。",
+            "卸载 OC editor",
             MessageBoxButtons.YesNo,
             MessageBoxIcon.Question);
         if (answer != DialogResult.Yes) return;
 
         var desktop = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
-        TryDelete(Path.Combine(desktop, "OC Studio.lnk"));
+        TryDelete(Path.Combine(desktop, "OC editor.lnk"));
 
         var programs = Environment.GetFolderPath(Environment.SpecialFolder.Programs);
-        var menuDir = Path.Combine(programs, "OC Studio");
-        TryDelete(Path.Combine(menuDir, "OC Studio.lnk"));
-        TryDelete(Path.Combine(menuDir, "卸载 OC Studio.lnk"));
+        var menuDir = Path.Combine(programs, "OC editor");
+        TryDelete(Path.Combine(menuDir, "OC editor.lnk"));
+        TryDelete(Path.Combine(menuDir, "卸载 OC editor.lnk"));
         TryDeleteDirectory(menuDir);
 
         using (var key = Registry.CurrentUser.OpenSubKey(
-                   @"Software\Microsoft\Windows\CurrentVersion\Uninstall\OCStudio",
+                   @"Software\Microsoft\Windows\CurrentVersion\Uninstall\OCEditor",
                    writable: true))
         {
             key?.Dispose();
         }
         Registry.CurrentUser.DeleteSubKeyTree(
-            @"Software\Microsoft\Windows\CurrentVersion\Uninstall\OCStudio",
+            @"Software\Microsoft\Windows\CurrentVersion\Uninstall\OCEditor",
             throwOnMissingSubKey: false);
 
         // The running executable cannot remove itself; let cmd finish after exit.
@@ -137,7 +137,7 @@ internal sealed class InstallerForm : Form
     {
         _silent = silent;
         Shown += (_, _) => { if (_silent) Hide(); };
-        Text = "OC Studio 安装程序";
+        Text = "OC editor 安装程序";
         StartPosition = FormStartPosition.CenterScreen;
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
@@ -149,7 +149,7 @@ internal sealed class InstallerForm : Form
 
         var title = new Label
         {
-            Text = "OC Studio",
+            Text = "OC editor",
             Font = new Font("Segoe UI", 20f, FontStyle.Bold),
             ForeColor = Color.FromArgb(45, 42, 38),
             AutoSize = true,
@@ -177,7 +177,7 @@ internal sealed class InstallerForm : Form
         _pathBox.Text = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "Programs",
-            "OC Studio");
+            "OC editor");
 
         _browseButton.Text = "更改…";
         _browseButton.Location = new Point(449, 127);
@@ -232,7 +232,7 @@ internal sealed class InstallerForm : Form
     {
         using var dialog = new FolderBrowserDialog
         {
-            Description = "选择 OC Studio 的安装位置",
+            Description = "选择 OC editor 的安装位置",
             UseDescriptionForTitle = true,
             SelectedPath = Directory.Exists(_pathBox.Text)
                 ? _pathBox.Text
@@ -241,7 +241,7 @@ internal sealed class InstallerForm : Form
         };
         if (dialog.ShowDialog(this) == DialogResult.OK)
         {
-            _pathBox.Text = Path.Combine(dialog.SelectedPath, "OC Studio");
+            _pathBox.Text = Path.Combine(dialog.SelectedPath, "OC editor");
         }
     }
 
@@ -250,7 +250,7 @@ internal sealed class InstallerForm : Form
         var target = _pathBox.Text.Trim();
         if (string.IsNullOrWhiteSpace(target))
         {
-            MessageBox.Show(this, "请选择安装位置。", "OC Studio", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            MessageBox.Show(this, "请选择安装位置。", "OC editor", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             return;
         }
 
@@ -268,7 +268,7 @@ internal sealed class InstallerForm : Form
                 _status.Text = $"正在安装… {progress}%";
             })));
 
-            var exe = Path.Combine(target, "OCStudio.exe");
+            var exe = Path.Combine(target, "OCeditor.exe");
             var uninstaller = Path.Combine(target, "Uninstall.exe");
             var self = Environment.ProcessPath;
             if (!string.IsNullOrEmpty(self) && File.Exists(self))
@@ -302,9 +302,9 @@ internal sealed class InstallerForm : Form
                 return;
             }
 
-            MessageBox.Show(this, "OC Studio 安装完成。", "OC Studio", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show(this, "OC editor 安装完成。", "OC editor", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
-            if (MessageBox.Show(this, "现在启动 OC Studio 吗？", "OC Studio", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
+            if (MessageBox.Show(this, "现在启动 OC editor 吗？", "OC editor", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
             {
                 Process.Start(new ProcessStartInfo(exe) { WorkingDirectory = target, UseShellExecute = true });
             }
@@ -313,7 +313,7 @@ internal sealed class InstallerForm : Form
         catch (UnauthorizedAccessException)
         {
             _status.Text = "没有写入权限";
-            MessageBox.Show(this, "当前安装位置没有写入权限，请选择其他文件夹。", "OC Studio", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            MessageBox.Show(this, "当前安装位置没有写入权限，请选择其他文件夹。", "OC editor", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             _installButton.Enabled = true;
             _browseButton.Enabled = true;
             _pathBox.Enabled = true;
@@ -321,7 +321,7 @@ internal sealed class InstallerForm : Form
         catch (Exception ex)
         {
             _status.Text = "安装失败";
-            MessageBox.Show(this, $"安装失败：\n{ex.Message}", "OC Studio", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show(this, $"安装失败：\n{ex.Message}", "OC editor", MessageBoxButtons.OK, MessageBoxIcon.Error);
             _installButton.Enabled = true;
             _browseButton.Enabled = true;
             _pathBox.Enabled = true;
@@ -367,15 +367,15 @@ internal sealed class InstallerForm : Form
         if (_desktopShortcut.Checked)
         {
             var desktop = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
-            CreateShortcut(shell, Path.Combine(desktop, "OC Studio.lnk"), exe, target);
+            CreateShortcut(shell, Path.Combine(desktop, "OC editor.lnk"), exe, target);
         }
 
         var programs = Environment.GetFolderPath(Environment.SpecialFolder.Programs);
-        var menuDir = Path.Combine(programs, "OC Studio");
+        var menuDir = Path.Combine(programs, "OC editor");
         Directory.CreateDirectory(menuDir);
-        CreateShortcut(shell, Path.Combine(menuDir, "OC Studio.lnk"), exe, target);
+        CreateShortcut(shell, Path.Combine(menuDir, "OC editor.lnk"), exe, target);
 
-        dynamic uninstallLink = shell.CreateShortcut(Path.Combine(menuDir, "卸载 OC Studio.lnk"));
+        dynamic uninstallLink = shell.CreateShortcut(Path.Combine(menuDir, "卸载 OC editor.lnk"));
         uninstallLink.TargetPath = uninstaller;
         uninstallLink.Arguments = "--uninstall";
         uninstallLink.WorkingDirectory = target;
@@ -388,17 +388,17 @@ internal sealed class InstallerForm : Form
         link.TargetPath = exe;
         link.WorkingDirectory = workingDirectory;
         link.IconLocation = $"{exe},0";
-        link.Description = "OC Studio 本地优先创作工作台";
+        link.Description = "OC editor 本地优先创作工作台";
         link.Save();
     }
 
     private static void WriteUninstallEntry(string target, string exe, string uninstaller)
     {
         using var key = Registry.CurrentUser.CreateSubKey(
-            @"Software\Microsoft\Windows\CurrentVersion\Uninstall\OCStudio");
-        key.SetValue("DisplayName", "OC Studio");
-        key.SetValue("DisplayVersion", "0.18.0");
-        key.SetValue("Publisher", "OC Studio");
+            @"Software\Microsoft\Windows\CurrentVersion\Uninstall\OCEditor");
+        key.SetValue("DisplayName", "OC editor");
+        key.SetValue("DisplayVersion", "0.18.2");
+        key.SetValue("Publisher", "OC editor");
         key.SetValue("InstallLocation", target);
         key.SetValue("DisplayIcon", $"{exe},0");
         key.SetValue("UninstallString", $"\"{uninstaller}\" --uninstall");

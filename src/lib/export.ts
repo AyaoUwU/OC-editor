@@ -5,7 +5,7 @@ export interface ExportPayload {
   version: 2
   exportedAt: string
   meta: {
-    app: 'OC Studio'
+    app: 'OC editor'
     format: 'oc-studio-backup'
     offline: true
     includes: string[]
@@ -34,7 +34,7 @@ export async function exportAllData(): Promise<ExportPayload> {
     version: 2,
     exportedAt: new Date().toISOString(),
     meta: {
-      app: 'OC Studio',
+      app: 'OC editor',
       format: 'oc-studio-backup',
       offline: true,
       includes: ['characters', 'events', 'countries', 'worldEntries', 'tags', 'maps'],
@@ -69,16 +69,16 @@ export async function exportAllDataZip(): Promise<{ name: string; size: number }
     note: '地图图层不直接存入备份；使用 seed + params 可确定性重建完全相同的图层。',
   }
   const readme = [
-    'OC Studio 本地备份',
+    'OC editor 本地备份',
     '==================',
     '',
-    '此 ZIP 由 OC Studio 在本机生成，不包含遥测或在线资源。',
+    '此 ZIP 由 OC editor 在本机生成，不包含遥测或在线资源。',
     '',
     '内容：',
     '- oc-data.json：角色、事件、国家、词条、标签、关系（嵌入条目字段）与地图参数/种子。',
     '- manifest.json：备份摘要。',
     '',
-    '恢复：在 OC Studio 的“设置 → 数据”中选择“导入 JSON / ZIP...”，选择本文件即可。',
+    '恢复：在 OC editor 的“设置 → 数据”中选择“导入 JSON / ZIP...”，选择本文件即可。',
     '地图图层会在导入后按 seed + params 在本地重新计算，因此不需要携带数 MB 的原始图层。',
     '图片二进制仍保存在本地数据目录，不包含在本备份中。',
     '',
@@ -142,7 +142,7 @@ async function downloadJsonCapacitor(json: string, filename: string): Promise<vo
   const blob = new Blob([json], { type: 'application/json' })
   const file = new File([blob], filename, { type: 'application/json' })
   if (navigator.canShare?.({ files: [file] })) {
-    await navigator.share({ files: [file], title: 'OC Studio 数据导出' })
+    await navigator.share({ files: [file], title: 'OC editor 数据导出' })
   }
   // 无法分享时静默成功，文件已保存到 Documents 目录
   void uri
@@ -160,7 +160,7 @@ export async function exportToMarkdown(): Promise<string> {
 
   const lines: string[] = []
   const date = new Date().toISOString().slice(0, 10)
-  lines.push(`# OC Studio 导出 — ${date}`)
+  lines.push(`# OC editor 导出 — ${date}`)
   lines.push('')
 
   if (characters.length > 0) {
@@ -232,7 +232,7 @@ export async function exportToTxt(): Promise<string> {
 
   const lines: string[] = []
   const date = new Date().toISOString().slice(0, 10)
-  lines.push(`OC Studio 导出 — ${date}`)
+  lines.push(`OC editor 导出 — ${date}`)
   lines.push('='.repeat(40))
   lines.push('')
 
@@ -321,7 +321,7 @@ async function downloadTextCapacitor(content: string, filename: string): Promise
   const blob = new Blob([content], { type: 'text/plain' })
   const file = new File([blob], filename, { type: 'text/plain' })
   if (navigator.canShare?.({ files: [file] })) {
-    await navigator.share({ files: [file], title: 'OC Studio 导出' })
+    await navigator.share({ files: [file], title: 'OC editor 导出' })
   }
   void uri
 }

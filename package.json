@@ -1,6 +1,6 @@
 {
   "name": "oc-studio",
-  "version": "0.18.1-alpha",
+  "version": "0.18.2",
   "private": true,
   "scripts": {
     "dev": "next dev --webpack",

@@ -286,7 +286,7 @@ export async function importOcmapFile(file: File): Promise<WorldMapRecord> {
     throw new Error('不是有效的 .ocmap 文件')
   }
   if (!isRecord(parsed) || parsed.format !== OCMAP_FORMAT || !isRecord(parsed.map)) {
-    throw new Error('缺少 OC Studio 地图标识')
+    throw new Error('缺少 OC editor 地图标识')
   }
   const map = parsed.map
   const name = typeof map.name === 'string' ? map.name : file.name.replace(/\.[^.]+$/, '')

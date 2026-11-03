@@ -31,7 +31,7 @@ internal static class Program
         }
         catch (Exception ex)
         {
-            MessageBox.Show("安装程序启动失败：\n" + ex.Message, "OC Studio", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show("安装程序启动失败：\n" + ex.Message, "OC editor", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 }

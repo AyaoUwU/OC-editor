@@ -206,7 +206,7 @@ export async function renderNovelPages(
     ctx.textAlign = 'center'
     ctx.fillStyle = '#6b5638'
     ctx.font = `600 ${Math.round(titleSize * 0.52)}px ${fontFamily}`
-    ctx.fillText(novel.author ? `著 / ${novel.author}` : 'OC STUDIO', width / 2, height * 0.26)
+    ctx.fillText(novel.author ? `著 / ${novel.author}` : 'OC EDITOR', width / 2, height * 0.26)
     ctx.fillStyle = ink
     ctx.font = `700 ${titleSize}px ${fontFamily}`
     const titleLines = wrapText(ctx, novel.title || '未命名小说', contentWidth * 0.9)

@@ -585,7 +585,7 @@ export function NovelView() {
                     </select>
                     <span>·</span>
                     <span>自动保存到本地</span>
-                    <span className="ml-auto font-serif tracking-widest">OC STUDIO</span>
+                    <span className="ml-auto font-serif tracking-widest">OC EDITOR</span>
                   </div>
 
                   <details className="mt-4 rounded-lg border border-[#dfd0bc] bg-[#f7f0e3] px-3 py-2">

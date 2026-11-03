@@ -51,7 +51,7 @@ internal sealed class MainForm : Form
 
     public MainForm()
     {
-        Text = "OC Studio";
+        Text = "OC editor";
         var workArea = Screen.PrimaryScreen?.WorkingArea ?? new Rectangle(0, 0, 1920, 1080);
         Width = Math.Clamp((int)(workArea.Width * 0.92), 1100, Math.Max(1100, workArea.Width - 24));
         Height = Math.Clamp((int)(workArea.Height * 0.92), 700, Math.Max(700, workArea.Height - 24));
@@ -76,7 +76,7 @@ internal sealed class MainForm : Form
 
         _loading.Dock = DockStyle.Fill;
         _loading.TextAlign = ContentAlignment.MiddleCenter;
-        _loading.Text = "正在启动 OC Studio…";
+        _loading.Text = "正在启动 OC editor…";
         _loading.Font = new Font("Segoe UI", 12f);
         _loading.BackColor = Color.FromArgb(28, 27, 26);
         _loading.ForeColor = Color.FromArgb(165, 160, 152);
@@ -119,8 +119,42 @@ internal sealed class MainForm : Form
             var userDataFolder = Environment.GetEnvironmentVariable("OC_STUDIO_USER_DATA")
                 ?? Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                    "OC Studio",
+                    "OC editor",
                     "WebView2");
+
+            // 0.18.1 及更早版本的产品名是 "OC Studio"，数据放在
+            // %LOCALAPPDATA%\OC Studio\WebView2。改名后首次启动时把旧数据复制过来，
+            // 旧目录保留不动，方便回滚；升级不会丢角色、关系、图片和动画。
+            try
+            {
+                if (!Directory.Exists(userDataFolder))
+                {
+                    var legacyFolder = Path.Combine(
+                        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                        "OC Studio",
+                        "WebView2");
+                    if (Directory.Exists(legacyFolder))
+                    {
+                        var legacyRoot = new DirectoryInfo(legacyFolder).FullName;
+                        LauncherLog.Write($"migrating data from {legacyRoot}");
+                        Directory.CreateDirectory(userDataFolder);
+                        foreach (var dir in Directory.GetDirectories(legacyRoot, "*", SearchOption.AllDirectories))
+                        {
+                            Directory.CreateDirectory(dir.Replace(legacyRoot, userDataFolder));
+                        }
+                        foreach (var file in Directory.GetFiles(legacyRoot, "*", SearchOption.AllDirectories))
+                        {
+                            File.Copy(file, file.Replace(legacyRoot, userDataFolder), overwrite: false);
+                        }
+                        LauncherLog.Write("data migration finished");
+                    }
+                }
+            }
+            catch (Exception migrationError)
+            {
+                LauncherLog.Write($"data migration failed: {migrationError}");
+            }
+
             Directory.CreateDirectory(userDataFolder);
 
             var options = new CoreWebView2EnvironmentOptions
@@ -160,7 +194,7 @@ internal sealed class MainForm : Form
                 args.Response = _environment!.CreateWebResourceResponse(
                     Stream.Null,
                     403,
-                    "Blocked by OC Studio offline policy",
+                    "Blocked by OC editor offline policy",
                     "Content-Type: text/plain; charset=utf-8");
             };
 
@@ -186,7 +220,7 @@ internal sealed class MainForm : Form
                     MessageBox.Show(
                         this,
                         $"页面加载失败：{args.WebErrorStatus}\n\n请确认 out 静态资源完整。",
-                        "OC Studio",
+                        "OC editor",
                         MessageBoxButtons.OK,
                         MessageBoxIcon.Error);
                 }
@@ -197,7 +231,7 @@ internal sealed class MainForm : Form
                 MessageBox.Show(
                     this,
                     $"WebView2 渲染进程异常：{args.ProcessFailedKind}",
-                    "OC Studio",
+                    "OC editor",
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Error);
             };
@@ -210,7 +244,7 @@ internal sealed class MainForm : Form
                 {
                     Title = "保存文件",
                     FileName = suggested,
-                    Filter = "OC Studio 文件 (*.zip;*.json;*.ocbak;*.ocmap;*.png;*.jpg;*.jpeg)|*.zip;*.json;*.ocbak;*.ocmap;*.png;*.jpg;*.jpeg|所有文件 (*.*)|*.*",
+                    Filter = "OC editor 文件 (*.zip;*.json;*.ocbak;*.ocmap;*.png;*.jpg;*.jpeg)|*.zip;*.json;*.ocbak;*.ocmap;*.png;*.jpg;*.jpeg|所有文件 (*.*)|*.*",
                     AddExtension = true,
                     OverwritePrompt = true,
                 };
@@ -238,8 +272,8 @@ internal sealed class MainForm : Form
             LauncherLog.Write($"WebView2 user data folder busy: {ex}");
             ShowFatal(
                 "WebView2 数据目录被占用",
-                "另一个 OC Studio 窗口或残留的 WebView2 进程正在使用数据目录。\n\n" +
-                "请关闭所有 OC Studio 窗口后重试；如果仍然失败，请重启电脑。\n\n" +
+                "另一个 OC editor 窗口或残留的 WebView2 进程正在使用数据目录。\n\n" +
+                "请关闭所有 OC editor 窗口后重试；如果仍然失败，请重启电脑。\n\n" +
                 $"系统信息：{ex.Message}");
         }
         catch (UnauthorizedAccessException ex)
@@ -247,10 +281,10 @@ internal sealed class MainForm : Form
             LauncherLog.Write($"WebView2 user data folder inaccessible: {ex}");
             ShowFatal(
                 "无法访问用户数据目录",
-                "OC Studio 无法写入以下目录：\n" +
+                "OC editor 无法写入以下目录：\n" +
                 Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                    "OC Studio",
+                    "OC editor",
                     "WebView2") +
                 "\n\n请检查文件夹权限、磁盘空间，或以当前用户身份重新登录后重试。");
         }
@@ -264,9 +298,9 @@ internal sealed class MainForm : Form
     private void ShowWebView2Missing()
     {
         var answer = MessageBox.Show(
-            "OC Studio 需要 Microsoft Edge WebView2 Runtime。\n\n" +
+            "OC editor 需要 Microsoft Edge WebView2 Runtime。\n\n" +
             "Windows 11 通常已内置；Windows 10 可能需要单独安装。\n" +
-            "是否打开微软官方下载页面？（安装完成后重新打开 OC Studio 即可）",
+            "是否打开微软官方下载页面？（安装完成后重新打开 OC editor 即可）",
             "缺少 WebView2 Runtime",
             MessageBoxButtons.YesNo,
             MessageBoxIcon.Warning);

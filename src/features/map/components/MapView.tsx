@@ -713,7 +713,7 @@ export function MapView({ active = true, mode = 'generator', onCloseEditor }: Ma
           cell_of?: unknown[]
         }
         if (!data.width || !data.height || !Array.isArray(data.cells) || !Array.isArray(data.cell_of)) {
-          throw new Error('不是 OC Studio mapwright JSON：缺少 width/height/cells/cell_of')
+          throw new Error('不是 OC editor mapwright JSON：缺少 width/height/cells/cell_of')
         }
         setMapId(undefined)
         setMapName(file.name.replace(/\.json$/i, ''))

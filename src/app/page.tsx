@@ -779,7 +779,7 @@ export default function Home() {
         className="h-full section-fade flex items-center justify-center max-md:pt-[calc(60px+var(--safe-top))] max-md:pb-[calc(60px+var(--safe-bottom))]"
       >
         <p className="text-ink-muted text-sm font-serif">
-          {showPlaceholder ? placeholderText : '欢迎使用 OC Studio'}
+          {showPlaceholder ? placeholderText : '欢迎使用 OC editor'}
         </p>
       </div>
     </div>

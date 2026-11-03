@@ -334,7 +334,7 @@ export function SettingsDialog({
                     完全离线
                   </p>
                   <p className="mt-2 text-xs leading-5 text-ink-muted">
-                    OC Studio 运行时不需要账号、不包含云同步、遥测、崩溃上报、分析埋点或自动更新。
+                    OC editor 运行时不需要账号、不包含云同步、遥测、崩溃上报、分析埋点或自动更新。
                     地图生成、编辑器、关系图谱与导出都在本机完成。
                   </p>
                 </div>
@@ -372,7 +372,7 @@ export function SettingsDialog({
                   </span>
                 </div>
                 <div className="rounded border border-line p-3 text-xs leading-5 text-ink-muted">
-                  <p className="text-ink">OC Studio — 原创角色与世界观创作工作台</p>
+                  <p className="text-ink">OC editor — 原创角色与世界观创作工作台</p>
                   <p className="mt-1">
                     角色档案 · 世界观词条 · 关系图谱 · 树形表格 · 程序化世界地图
                   </p>

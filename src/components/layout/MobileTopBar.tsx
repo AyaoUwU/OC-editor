@@ -33,7 +33,7 @@ export function MobileTopBar() {
   const isGallery = section === 'gallery'
   const needsMenu = section === 'wiki' || section === 'album'
 
-  const displayTitle = pageTitle ?? (SECTION_TITLES[section] ?? 'OC Studio')
+  const displayTitle = pageTitle ?? (SECTION_TITLES[section] ?? 'OC editor')
 
   return (
     <div className="md:hidden fixed top-0 left-0 right-0 z-20 flex h-[calc(60px+var(--safe-top))] items-center justify-between border-b border-line bg-paper/85 px-4 pt-[var(--safe-top)] backdrop-blur-lg dark:bg-[#1C1B1A]/85">

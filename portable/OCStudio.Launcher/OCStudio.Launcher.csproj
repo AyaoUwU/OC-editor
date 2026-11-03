@@ -6,17 +6,17 @@
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <AssemblyName>OCStudio</AssemblyName>
+    <AssemblyName>OCeditor</AssemblyName>
     <RootNamespace>OCStudio.Launcher</RootNamespace>
     <ApplicationIcon>..\ocstudio.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <Platforms>x64</Platforms>
     <PlatformTarget>x64</PlatformTarget>
-    <Version>0.18.1</Version>
-    <FileVersion>0.18.1.0</FileVersion>
-    <AssemblyTitle>OC Studio</AssemblyTitle>
-    <Product>OC Studio</Product>
-    <Company>OC Studio</Company>
+    <Version>0.18.2</Version>
+    <FileVersion>0.18.2.0</FileVersion>
+    <AssemblyTitle>OC editor</AssemblyTitle>
+    <Product>OC editor</Product>
+    <Company>OC editor</Company>
     <!-- manifest 中的 DPI 设置需要在 .NET 启动前生效；忽略 WinForms 的重复设置提示。 -->
     <NoWarn>$(NoWarn);WFO0003</NoWarn>
     <AllowUnsafeBlocks>false</AllowUnsafeBlocks>

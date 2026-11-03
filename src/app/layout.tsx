@@ -13,7 +13,7 @@ import { KeyboardProvider } from "@/lib/KeyboardContext";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "OC Studio",
+  title: "OC editor",
   description: "原创角色与世界观创作工作台",
   icons: {
     icon: "/favicon.svg",

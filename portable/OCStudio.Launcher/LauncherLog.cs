@@ -10,7 +10,7 @@ internal static class LauncherLog
     private static readonly string LogPath = Path.Combine(
         Environment.GetEnvironmentVariable("OC_STUDIO_LOG_DIR")
             ?? Path.GetTempPath(),
-        "OCStudio-launcher.log");
+        "OCEditor-launcher.log");
 
     public static void Write(string message)
     {

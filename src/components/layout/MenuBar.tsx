@@ -278,7 +278,7 @@ export function MenuBar() {
       className="app-titlebar max-md:hidden relative flex h-10 shrink-0 items-center justify-between border-b border-line bg-transparent px-4"
     >
       <div className="flex items-center gap-4">
-        <span className="font-serif text-sm text-ink transparent-text">OC Studio</span>
+        <span className="font-serif text-sm text-ink transparent-text">OC editor</span>
         <div className="hidden sm:flex sm:items-center sm:gap-1">
           <DropdownMenu open={openMenu === 'file'} onOpenChange={(o) => { if (o) setOpen('file'); else if (openMenuRef.current === 'file') setOpen(null) }}>
             <span data-menu-trigger="file">
