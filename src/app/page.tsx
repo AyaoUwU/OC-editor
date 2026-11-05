@@ -24,6 +24,7 @@ import { useCreateCountry, useDeleteCountry } from '@/features/countries/hooks/u
 import { WorldLayout } from '@/features/world/components/WorldLayout'
 import { TimelineView } from '@/features/timeline/components/TimelineView'
 import { InspirationView } from '@/features/inspirations/InspirationView'
+import { ErrorBoundary } from '@/components/shared/ErrorBoundary'
 import { NovelView } from '@/features/novel/NovelView'
 import { GlobalAlbum } from '@/components/shared/GlobalAlbum'
 const RelationGraph = dynamic(
@@ -116,6 +117,20 @@ export default function Home() {
   const [characterView, setCharacterView] = useState<CharacterView>({ sub: 'list' })
   const [countryView, setCountryView] = useState<CountryView>({ sub: 'list' })
   const [worldSelectedEntryId, setWorldSelectedEntryId] = useState<number | null>(null)
+
+  // 切换世界观后回到各自列表页，避免停留在另一个世界的编辑页。
+  useEffect(() => {
+    const resetViews = (): void => {
+      clearEditing()
+      setEventView({ sub: 'list' })
+      setCharacterView({ sub: 'list' })
+      setCountryView({ sub: 'list' })
+      setWorldSelectedEntryId(null)
+      setMapEditorOpen(false)
+    }
+    window.addEventListener('oc-world-changed', resetViews)
+    return () => window.removeEventListener('oc-world-changed', resetViews)
+  }, [clearEditing])
 
   // Slide animation tracking for editor↔list transitions
   const prevEventSub = useRef(eventView.sub)
@@ -734,7 +749,9 @@ export default function Home() {
         className="h-full section-fade overflow-y-auto max-md:pt-[calc(60px+var(--safe-top))] max-md:pb-[calc(60px+var(--safe-bottom))]"
         data-visible={showTimeline ? "true" : "false"}
       >
-        <TimelineView onSelectEvent={handleTimelineSelectEvent} />
+        <ErrorBoundary label="时间线">
+          <TimelineView onSelectEvent={handleTimelineSelectEvent} />
+        </ErrorBoundary>
       </div>
 
       <div
@@ -750,21 +767,23 @@ export default function Home() {
         className="h-full section-fade overflow-y-auto max-md:pt-[calc(60px+var(--safe-top))] max-md:pb-[calc(60px+var(--safe-bottom))]"
         data-visible={showRelations ? "true" : "false"}
       >
-        <RelationGraph
-          visible={showRelations}
-          onNavigateToCharacter={(id) => {
-            setSource('relations')
-            handleRelatedItemNavigate(id, 'character')
-          }}
-          onNavigateToEvent={(id) => {
-            setSource('relations')
-            handleRelatedItemNavigate(id, 'event')
-          }}
-          onNavigateToCountry={(id) => {
-            setSource('relations')
-            handleRelatedItemNavigate(id, 'country')
-          }}
-        />
+        <ErrorBoundary label="关系图">
+          <RelationGraph
+            visible={showRelations}
+            onNavigateToCharacter={(id) => {
+              setSource('relations')
+              handleRelatedItemNavigate(id, 'character')
+            }}
+            onNavigateToEvent={(id) => {
+              setSource('relations')
+              handleRelatedItemNavigate(id, 'event')
+            }}
+            onNavigateToCountry={(id) => {
+              setSource('relations')
+              handleRelatedItemNavigate(id, 'country')
+            }}
+          />
+        </ErrorBoundary>
       </div>
 
       <div

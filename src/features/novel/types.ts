@@ -20,6 +20,8 @@ export interface NovelChapter {
 
 export interface Novel {
   id?: number
+  /** 所属世界观；旧数据没有该字段时归入最早创建的世界观。 */
+  worldId?: number
   title: string
   fontFamily?: string
   author: string

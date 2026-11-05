@@ -8,6 +8,7 @@ import { useNavigation } from './NavigationContext'
 import { useSettingsTrigger } from './SettingsTriggerContext'
 import { useTrashOverlay } from './TrashOverlayContext'
 import { useMobilePageHeader } from './MobilePageHeaderContext'
+import { WorldSwitcher } from '@/features/worlds/components/WorldSwitcher'
 
 const SECTION_TITLES: Record<string, string> = {
   wiki: '世界观',
@@ -77,6 +78,7 @@ export function MobileTopBar() {
 
       {/* Right: action icons */}
       <div className="flex items-center gap-1">
+        <WorldSwitcher iconOnly />
         <button
           onClick={() => setSearchOpen(true)}
           className="flex h-10 w-10 items-center justify-center rounded text-ink-muted transition-colors hover:text-ink hover:bg-black/5 dark:hover:bg-white/5 active:bg-black/8 dark:active:bg-white/8"

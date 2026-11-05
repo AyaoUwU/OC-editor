@@ -1,4 +1,5 @@
 import { db } from '@/lib/db'
+import { filterByActiveWorld } from '@/lib/world-scope'
 
 export interface ReferableEntity {
   type: string
@@ -83,7 +84,7 @@ registerEntityType({
   label: '角色',
   load: async () => {
     const all = await db.characters.orderBy('name').toArray()
-    return all
+    return filterByActiveWorld(all)
       .filter((c) => !c.deleted)
       .map((c) => ({
         type: 'character',
@@ -100,7 +101,7 @@ registerEntityType({
   label: '事件',
   load: async () => {
     const all = await db.events.orderBy('title').toArray()
-    return all
+    return filterByActiveWorld(all)
       .filter((e) => !e.deleted)
       .map((e) => ({
         type: 'event',
@@ -116,7 +117,7 @@ registerEntityType({
   label: '国家',
   load: async () => {
     const all = await db.countries.orderBy('name').toArray()
-    return all
+    return filterByActiveWorld(all)
       .filter((c) => !c.deleted)
       .map((c) => ({
         type: 'country',
@@ -132,7 +133,7 @@ registerEntityType({
   type: 'world',
   label: '词条',
   load: async () => {
-    const all = (await db.worldEntries.toArray()).sort((a, b) =>
+    const all = filterByActiveWorld(await db.worldEntries.toArray()).sort((a, b) =>
       a.title.localeCompare(b.title, 'zh-CN'),
     )
     return all

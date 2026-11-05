@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">OC Studio</string>
-    <string name="title_activity_main">OC Studio</string>
-    <string name="package_name">com.ocstudio.app</string>
-    <string name="custom_url_scheme">com.ocstudio.app</string>
+    <string name="app_name">OC editor</string>
+    <string name="title_activity_main">OC editor</string>
+    <string name="package_name">com.oceditor.app</string>
+    <string name="custom_url_scheme">com.oceditor.app</string>
 </resources>

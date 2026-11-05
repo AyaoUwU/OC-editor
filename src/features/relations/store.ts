@@ -3,7 +3,7 @@
 import { create } from 'zustand'
 import { DEFAULT_GRAPH_VISIBILITY } from './category-visibility'
 
-const EDGE_CONTROLS_KEY = 'oc-studio-relation-edge-controls'
+const EDGE_CONTROLS_KEY = 'oc-editor-relation-edge-controls'
 
 export interface EdgeControls {
   /** 第一个控制点：沿线位置 0..1 */

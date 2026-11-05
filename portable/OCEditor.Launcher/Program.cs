@@ -3,7 +3,7 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using System.Windows.Forms;
 
-namespace OCStudio.Launcher;
+namespace OCEditor.Launcher;
 
 internal static class Program
 {

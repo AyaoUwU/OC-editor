@@ -2,13 +2,13 @@ using System;
 using System.IO;
 using System.Text;
 
-namespace OCStudio.Launcher;
+namespace OCEditor.Launcher;
 
 internal static class LauncherLog
 {
     private static readonly object Gate = new();
     private static readonly string LogPath = Path.Combine(
-        Environment.GetEnvironmentVariable("OC_STUDIO_LOG_DIR")
+        Environment.GetEnvironmentVariable("OC_EDITOR_LOG_DIR")
             ?? Path.GetTempPath(),
         "OCEditor-launcher.log");
 

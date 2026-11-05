@@ -1,5 +1,6 @@
 import { db } from '@/lib/db'
 import { loadCharacterFolders, type CharacterFolder } from '@/features/characters/folders'
+import { filterByActiveWorld } from '@/lib/world-scope'
 import { createZip, downloadBlob } from '@/lib/zip'
 
 export interface ExportPayload {
@@ -7,7 +8,7 @@ export interface ExportPayload {
   exportedAt: string
   meta: {
     app: 'OC editor'
-    format: 'oc-studio-backup'
+    format: 'oc-editor-backup'
     offline: true
     includes: string[]
   }
@@ -19,17 +20,20 @@ export interface ExportPayload {
     tags: unknown[]
     maps: unknown[]
     characterFolders: CharacterFolder[]
+    /** 世界观列表；旧备份没有该字段时全部内容归入默认世界观。 */
+    worlds?: unknown[]
   }
 }
 
 export async function exportAllData(): Promise<ExportPayload> {
-  const [characters, events, countries, worldEntries, tags, maps] = await Promise.all([
+  const [characters, events, countries, worldEntries, tags, maps, worlds] = await Promise.all([
     db.characters.filter((c) => !c.deleted).toArray(),
     db.events.filter((e) => !e.deleted).toArray(),
     db.countries.filter((c) => !c.deleted).toArray(),
     db.worldEntries.filter((w) => !w.deleted).toArray(),
     db.tags.toArray(),
     db.maps.filter((m) => !m.deleted).toArray(),
+    db.worlds.filter((w) => !w.deleted).toArray(),
   ])
 
   return {
@@ -37,9 +41,9 @@ export async function exportAllData(): Promise<ExportPayload> {
     exportedAt: new Date().toISOString(),
     meta: {
       app: 'OC editor',
-      format: 'oc-studio-backup',
+      format: 'oc-editor-backup',
       offline: true,
-      includes: ['characters', 'events', 'countries', 'worldEntries', 'tags', 'maps', 'characterFolders'],
+      includes: ['worlds', 'characters', 'events', 'countries', 'worldEntries', 'tags', 'maps', 'characterFolders'],
     },
     data: {
       characters,
@@ -48,7 +52,8 @@ export async function exportAllData(): Promise<ExportPayload> {
       worldEntries,
       tags,
       maps,
-      characterFolders: loadCharacterFolders(),
+      characterFolders: loadCharacterFolders(true),
+      worlds,
     },
   }
 }
@@ -57,7 +62,7 @@ export async function exportAllDataZip(): Promise<{ name: string; size: number }
   const data = await exportAllData()
   const date = new Date().toISOString().slice(0, 10)
   const manifest = {
-    format: 'oc-studio-backup',
+    format: 'oc-editor-backup',
     version: 2,
     createdAt: data.exportedAt,
     offline: true,
@@ -93,7 +98,7 @@ export async function exportAllDataZip(): Promise<{ name: string; size: number }
     { name: 'manifest.json', data: JSON.stringify(manifest, null, 2) },
     { name: 'README.txt', data: readme },
   ])
-  const name = `oc-studio-backup-${date}.zip`
+  const name = `oc-editor-backup-${date}.zip`
   downloadBlob(blob, name)
   return { name, size: blob.size }
 }
@@ -155,12 +160,16 @@ async function downloadJsonCapacitor(json: string, filename: string): Promise<vo
 // ── Markdown / TXT 导出 ──
 
 export async function exportToMarkdown(): Promise<string> {
-  const [characters, events, countries, worldEntries] = await Promise.all([
+  const [charactersRaw, eventsRaw, countriesRaw, entriesRaw] = await Promise.all([
     db.characters.filter((c) => !c.deleted).toArray(),
     db.events.filter((e) => !e.deleted).toArray(),
     db.countries.filter((c) => !c.deleted).toArray(),
     db.worldEntries.filter((w) => !w.deleted).toArray(),
   ])
+  const characters = filterByActiveWorld(charactersRaw)
+  const events = filterByActiveWorld(eventsRaw)
+  const countries = filterByActiveWorld(countriesRaw)
+  const worldEntries = filterByActiveWorld(entriesRaw)
 
   const lines: string[] = []
   const date = new Date().toISOString().slice(0, 10)
@@ -227,12 +236,16 @@ export async function exportToMarkdown(): Promise<string> {
 }
 
 export async function exportToTxt(): Promise<string> {
-  const [characters, events, countries, worldEntries] = await Promise.all([
+  const [charactersRaw, eventsRaw, countriesRaw, entriesRaw] = await Promise.all([
     db.characters.filter((c) => !c.deleted).toArray(),
     db.events.filter((e) => !e.deleted).toArray(),
     db.countries.filter((c) => !c.deleted).toArray(),
     db.worldEntries.filter((w) => !w.deleted).toArray(),
   ])
+  const characters = filterByActiveWorld(charactersRaw)
+  const events = filterByActiveWorld(eventsRaw)
+  const countries = filterByActiveWorld(countriesRaw)
+  const worldEntries = filterByActiveWorld(entriesRaw)
 
   const lines: string[] = []
   const date = new Date().toISOString().slice(0, 10)

@@ -1,6 +1,7 @@
 import { db } from '@/lib/db'
 import { loadCharacterFolders, saveCharacterFolders } from '@/features/characters/folders'
 import { parseCharacterFolders, planCharacterFolderImport } from '@/features/characters/folder-backup'
+import { getActiveWorldId, getLegacyWorldId } from '@/lib/world-scope'
 import type { QueryClient } from '@tanstack/react-query'
 import type { Table } from 'dexie'
 
@@ -15,6 +16,7 @@ interface ImportPayload {
     tags: unknown[]
     maps?: unknown[]
     characterFolders?: unknown[]
+    worlds?: unknown[]
   }
 }
 
@@ -47,6 +49,61 @@ const TABLE_CONFIG: Array<{
   { key: 'tags', table: db.tags as unknown as Table<Record<string, unknown>, number>, nameField: 'name' },
   { key: 'maps', table: db.maps as unknown as Table<Record<string, unknown>, number>, nameField: 'name' },
 ]
+
+/**
+ * 备份里的世界按名称对齐到本地：同名复用，缺失则新建。
+ * 返回「备份世界 id → 本地世界 id」的映射。
+ */
+async function resolveImportedWorlds(incoming: unknown[]): Promise<Map<number, number>> {
+  const map = new Map<number, number>()
+  if (incoming.length === 0) return map
+  const local = (await db.worlds.toArray()).filter((world) => !world.deleted)
+  const now = Date.now()
+  for (const item of incoming) {
+    if (item === null || typeof item !== 'object') continue
+    const world = item as { id?: unknown; name?: unknown; description?: unknown }
+    const name = typeof world.name === 'string' ? world.name.trim() : ''
+    if (!name) continue
+    const existing = local.find((entry) => entry.name === name)
+    if (existing?.id !== undefined) {
+      if (typeof world.id === 'number') map.set(world.id, existing.id)
+      continue
+    }
+    const id = await db.worlds.add({
+      name,
+      description: typeof world.description === 'string' ? world.description : '',
+      order: local.length,
+      createdAt: now,
+      updatedAt: now,
+      deleted: false,
+    })
+    local.push({
+      id,
+      name,
+      description: typeof world.description === 'string' ? world.description : '',
+      order: local.length,
+      createdAt: now,
+      updatedAt: now,
+      deleted: false,
+    })
+    if (typeof world.id === 'number') map.set(world.id, id)
+  }
+  return map
+}
+
+function remapRecordWorldId(
+  row: unknown,
+  worldMap: Map<number, number>,
+  fallback: number | undefined,
+): unknown {
+  if (row === null || typeof row !== 'object') return row
+  const { worldId, ...rest } = row as Record<string, unknown>
+  if (typeof worldId === 'number' && worldMap.has(worldId)) {
+    return { ...rest, worldId: worldMap.get(worldId) }
+  }
+  if (fallback !== undefined) return { ...rest, worldId: fallback }
+  return rest
+}
 
 export function validateImportData(json: unknown): ImportSummary {
   if (json === null || typeof json !== 'object') {
@@ -141,8 +198,22 @@ async function processTableMerge(
 
   const existingRecords = await table.toArray()
   const existingByName = new Map<string, Record<string, unknown>>()
+  // 同名合并只在同一世界观内进行，避免导入把别的世界的同名条目覆盖掉。
+  const incomingWorldIds = new Set(
+    records
+      .map((record) => (record as { worldId?: unknown }).worldId)
+      .filter((worldId): worldId is number => typeof worldId === 'number'),
+  )
 
   for (const item of existingRecords) {
+    const itemWorldId = (item as { worldId?: unknown }).worldId
+    if (
+      incomingWorldIds.size > 0 &&
+      typeof itemWorldId === 'number' &&
+      !incomingWorldIds.has(itemWorldId)
+    ) {
+      continue
+    }
     const name = item[nameField]
     if (typeof name === 'string') {
       existingByName.set(name.toLowerCase().trim(), item)
@@ -201,14 +272,28 @@ export async function importData(
 ): Promise<ImportResult> {
   validateImportData(json)
   const sanitized = stripRemoteUrls(json) as ImportPayload
+  const records = sanitized.data
+  const maps = Array.isArray(records.maps) ? records.maps : []
+  const worlds = Array.isArray(records.worlds) ? records.worlds : []
+  const worldMap = await resolveImportedWorlds(worlds)
+  const fallbackWorldId = getActiveWorldId() ?? getLegacyWorldId() ?? undefined
+  const withWorld = (items: unknown[]): unknown[] =>
+    items.map((item) => remapRecordWorldId(item, worldMap, fallbackWorldId))
   const folderPlan = planCharacterFolderImport(
-    loadCharacterFolders(),
-    parseCharacterFolders(sanitized.data.characterFolders),
-    sanitized.data.characters,
+    loadCharacterFolders(true).map(folder => ({ ...folder, worldId: folder.worldId ?? getLegacyWorldId() ?? undefined })),
+    parseCharacterFolders(records.characterFolders).map(folder => remapRecordWorldId(folder, worldMap, fallbackWorldId) as typeof folder),
+    records.characters,
     strategy,
   )
-  const records = { ...sanitized.data, characters: folderPlan.characters }
-  const maps = Array.isArray(records.maps) ? records.maps : []
+  const characters = withWorld(folderPlan.characters)
+  const events = withWorld(records.events)
+  const countries = withWorld(records.countries)
+  const worldEntries = withWorld(records.worldEntries)
+  const mapRecords = withWorld(maps)
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('oc-worlds-changed'))
+  }
 
   if (strategy === 'replace') {
     await db.characters.clear()
@@ -219,22 +304,22 @@ export async function importData(
     await db.maps.clear()
 
     await Promise.all([
-      records.characters.length > 0 ? db.characters.bulkAdd(records.characters as never[]) : Promise.resolve(),
-      records.events.length > 0 ? db.events.bulkAdd(records.events as never[]) : Promise.resolve(),
-      records.countries.length > 0 ? db.countries.bulkAdd(records.countries as never[]) : Promise.resolve(),
-      records.worldEntries.length > 0 ? db.worldEntries.bulkAdd(records.worldEntries as never[]) : Promise.resolve(),
+      characters.length > 0 ? db.characters.bulkAdd(characters as never[]) : Promise.resolve(),
+      events.length > 0 ? db.events.bulkAdd(events as never[]) : Promise.resolve(),
+      countries.length > 0 ? db.countries.bulkAdd(countries as never[]) : Promise.resolve(),
+      worldEntries.length > 0 ? db.worldEntries.bulkAdd(worldEntries as never[]) : Promise.resolve(),
       records.tags.length > 0 ? db.tags.bulkAdd(records.tags as never[]) : Promise.resolve(),
-      maps.length > 0 ? db.maps.bulkAdd(maps as never[]) : Promise.resolve(),
+      mapRecords.length > 0 ? db.maps.bulkAdd(mapRecords as never[]) : Promise.resolve(),
     ])
 
     const total =
-      records.characters.length +
-      records.events.length +
-      records.countries.length +
-      records.worldEntries.length +
+      characters.length +
+      events.length +
+      countries.length +
+      worldEntries.length +
       records.tags.length +
-      maps.length
-    saveCharacterFolders(folderPlan.folders)
+      mapRecords.length
+    saveCharacterFolders(folderPlan.folders, true)
     queryClient?.invalidateQueries()
     return { added: total, skipped: 0, overwritten: 0 }
   }
@@ -244,14 +329,24 @@ export async function importData(
   let totalOverwritten = 0
 
   for (const config of TABLE_CONFIG) {
-    const items = (config.key === 'maps' ? maps : records[config.key]) as unknown[]
+    const items = (config.key === 'maps'
+      ? mapRecords
+      : config.key === 'tags'
+        ? records.tags
+        : config.key === 'characters'
+          ? characters
+          : config.key === 'events'
+            ? events
+            : config.key === 'countries'
+              ? countries
+              : worldEntries) as unknown[]
     const result = await processTableMerge(config.table, items, strategy, config.nameField)
     totalAdded += result.added
     totalSkipped += result.skipped
     totalOverwritten += result.overwritten
   }
 
-  saveCharacterFolders(folderPlan.folders)
+  saveCharacterFolders(folderPlan.folders, true)
   queryClient?.invalidateQueries()
 
   return { added: totalAdded, skipped: totalSkipped, overwritten: totalOverwritten }

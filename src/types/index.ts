@@ -1,3 +1,19 @@
+/**
+ * 世界观（作品）。所有创作实体都归属于一个世界观，
+ * 切换世界观后角色/事件/国家/词条/时期/地图/关系互不可见。
+ */
+export interface World {
+  id?: number
+  name: string
+  description?: string
+  accentColor?: string
+  /** 列表排序；数字越小越靠前。 */
+  order?: number
+  createdAt: number
+  updatedAt: number
+  deleted?: boolean
+}
+
 export interface RelatedCharacter {
   characterId?: number
   name: string
@@ -26,6 +42,8 @@ export type CharacterKind = 'character' | 'weapon' | 'pet'
 
 export interface Character {
   id?: number
+  /** 所属世界观；旧数据没有该字段时归属于最早创建的世界观。 */
+  worldId?: number
   name: string
   /** 复用角色模板的实体类型；旧数据没有该字段时按 character 处理。 */
   entityKind?: CharacterKind
@@ -98,6 +116,8 @@ export interface Relationship {
 
 export interface Event {
   id?: number
+  /** 所属世界观。 */
+  worldId?: number
   title: string
   time: string
   endTime?: string
@@ -132,6 +152,8 @@ export interface ImageEntry {
 
 export interface Country {
   id?: number
+  /** 所属世界观。 */
+  worldId?: number
   name: string
   accentColor?: string
   parentId: number | null
@@ -160,6 +182,8 @@ export interface Country {
 
 export interface WorldEntry {
   id?: number
+  /** 所属世界观。 */
+  worldId?: number
   title: string
   content: string
   document?: unknown
@@ -200,6 +224,8 @@ export interface OperationLog {
 
 export interface Period {
   id?: number
+  /** 所属世界观。 */
+  worldId?: number
   name: string
   startTime: string
   endTime: string
@@ -227,6 +253,8 @@ export type RelationKind =
  */
 export interface RelationRecord {
   id: string
+  /** 所属世界观；旧数据没有该字段时按两端实体所在世界观推断。 */
+  worldId?: number
   sourceType: RelationEntityType
   sourceId: number
   targetType: RelationEntityType
@@ -298,6 +326,8 @@ export interface WorldMapParams {
 
 export interface WorldMapRecord {
   id?: number
+  /** 所属世界观。 */
+  worldId?: number
   name: string
   seed: number
   params: WorldMapParams

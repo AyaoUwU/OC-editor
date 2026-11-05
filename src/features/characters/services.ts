@@ -1,4 +1,5 @@
 import { db } from '@/lib/db'
+import { filterByActiveWorld } from '@/lib/world-scope'
 import { logOperation } from '@/lib/sync'
 import { updateReferencesAfterRename, syncReferenceLabels } from '@/lib/reference-sync'
 import { syncRelationLabelFromEntity } from '@/features/relations/services'
@@ -71,7 +72,7 @@ function buildDefaultCharacter(
 
 export async function getCharacters(): Promise<Character[]> {
   const all = await db.characters.orderBy('name').toArray()
-  return all.filter((c) => !c.deleted)
+  return filterByActiveWorld(all).filter((c) => !c.deleted)
 }
 
 export async function getCharacter(id: number): Promise<Character | undefined> {

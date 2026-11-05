@@ -44,3 +44,17 @@ test('keep-both remaps colliding folders and imported assignments without mutati
   assert.equal(result.characters[1].folderId, null)
   assert.equal(planCharacterFolderImport(current, current, [], 'keep-both').folders.length, 1)
 })
+
+
+test('same folder id in different worlds is remapped without changing the existing world', () => {
+  const current = [{ id: 'same', name: '人物', order: 0, createdAt: 1, worldId: 1 }]
+  const incoming = parseCharacterFolders([{ ...current[0], worldId: 2 }])
+  for (const strategy of ['skip', 'overwrite', 'keep-both']) {
+    const plan = planCharacterFolderImport(current, incoming, [{ name: '新角色', folderId: 'same', worldId: 2 }], strategy)
+    assert.equal(plan.folders.length, 2)
+    assert.equal(plan.folders.find(folder => folder.id === 'same').worldId, 1)
+    const added = plan.folders.find(folder => folder.worldId === 2)
+    assert.notEqual(added.id, 'same')
+    assert.equal(plan.characters[0].folderId, added.id)
+  }
+})

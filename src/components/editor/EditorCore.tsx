@@ -28,6 +28,7 @@ import { WikiLinkExtension } from './WikiLinkExtension'
 import { searchAllEntitiesFlat } from '@/lib/reference-registry'
 import { adjustSuggestionPosition } from '@/lib/menu-utils'
 import { db } from '@/lib/db'
+import { filterByActiveWorld } from '@/lib/world-scope'
 import type { ReferableEntity } from '@/lib/reference-registry'
 import { getImageUrl, getDefaultImage } from '@/lib/image-service'
 import { useDevice } from '@/lib/use-device'
@@ -440,12 +441,16 @@ export function EditorCore({
             }
             // Fallback: query the local tables directly so @ always works even
             // if a dynamically registered reference provider fails.
-            const [characters, countries, events, entries] = await Promise.all([
+            const [charactersRaw, countriesRaw, eventsRaw, entriesRaw] = await Promise.all([
               db.characters.toArray(),
               db.countries.toArray(),
               db.events.toArray(),
               db.worldEntries.toArray(),
             ])
+            const characters = filterByActiveWorld(charactersRaw)
+            const countries = filterByActiveWorld(countriesRaw)
+            const events = filterByActiveWorld(eventsRaw)
+            const entries = filterByActiveWorld(entriesRaw)
             return [
               ...characters
                 .filter((row) => !row.deleted && match(row.name, row.aliases ?? []))

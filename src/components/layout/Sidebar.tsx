@@ -26,6 +26,7 @@ import { useNavigation } from './NavigationContext'
 import { useSettingsTrigger } from './SettingsTriggerContext'
 import { useTrashOverlay } from './TrashOverlayContext'
 import { useCustomSections, type CustomSection } from '@/features/custom-sections'
+import { WorldSwitcher } from '@/features/worlds/components/WorldSwitcher'
 import { AppConfirm } from '@/components/shared/AppConfirm'
 import { createPortal } from 'react-dom'
 import {
@@ -173,6 +174,9 @@ export function Sidebar() {
   return (
     <aside data-sidebar className="max-md:hidden flex h-full w-[140px] shrink-0 flex-col overflow-y-auto border-r border-line bg-transparent aside-scroll">
       <nav className="flex flex-1 flex-col gap-1 p-3">
+        <div className="mb-1">
+          <WorldSwitcher variant="sidebar" />
+        </div>
         <p className="px-2 pb-1 pt-1 text-[9px] uppercase tracking-widest text-ink-faint">创作</p>
         {navItems.slice(0, 9).map(renderNavItem)}
 

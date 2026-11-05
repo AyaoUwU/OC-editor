@@ -18,7 +18,7 @@ import type { EventFormData } from '../types'
 import { useCharacterList } from '@/features/characters/hooks/useCharacters'
 import { useCountryList } from '@/features/countries/hooks/useCountries'
 import { useEventList } from '@/features/events/hooks/useEvents'
-import { parseTime, assembleTime } from '../utils'
+import { parseTime, assembleTime, sanitizeYearInput } from '../utils'
 
 interface EventEditorProps {
   event: Event
@@ -256,15 +256,15 @@ export function EventEditor({ event, onBack, onSave, onMentionClick, onNavigateI
           <div className="mt-3 flex flex-col gap-2 md:hidden">
             <div className="flex items-center gap-1">
               <span className="text-xs text-ink-faint w-8 shrink-0">开始</span>
-              <Input value={year} onChange={(e) => setYear(e.target.value)} placeholder="年份" className="w-16" />
-              <Input value={month} onChange={(e) => setMonth(e.target.value)} placeholder="月" className="w-12" />
-              <Input value={day} onChange={(e) => setDay(e.target.value)} placeholder="日" className="w-12" />
+              <Input inputMode="numeric" maxLength={6} value={year} onChange={(e) => setYear(sanitizeYearInput(e.target.value))} placeholder="年份" className="w-16" />
+              <Input inputMode="numeric" maxLength={2} value={month} onChange={(e) => setMonth(e.target.value.replace(/[^\d]/g, ''))} placeholder="月" className="w-12" />
+              <Input inputMode="numeric" maxLength={2} value={day} onChange={(e) => setDay(e.target.value.replace(/[^\d]/g, ''))} placeholder="日" className="w-12" />
             </div>
             <div className="flex items-center gap-1">
               <span className="text-xs text-ink-faint w-8 shrink-0">结束</span>
-              <Input value={endYear} onChange={(e) => setEndYear(e.target.value)} placeholder="结束年" className="w-16" />
-              <Input value={endMonth} onChange={(e) => setEndMonth(e.target.value)} placeholder="月" className="w-12" />
-              <Input value={endDay} onChange={(e) => setEndDay(e.target.value)} placeholder="日" className="w-12" />
+              <Input inputMode="numeric" maxLength={6} value={endYear} onChange={(e) => setEndYear(sanitizeYearInput(e.target.value))} placeholder="结束年" className="w-16" />
+              <Input inputMode="numeric" maxLength={2} value={endMonth} onChange={(e) => setEndMonth(e.target.value.replace(/[^\d]/g, ''))} placeholder="月" className="w-12" />
+              <Input inputMode="numeric" maxLength={2} value={endDay} onChange={(e) => setEndDay(e.target.value.replace(/[^\d]/g, ''))} placeholder="日" className="w-12" />
             </div>
             <div className="flex items-center gap-2">
               <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="地点" className="flex-1" />
@@ -276,13 +276,13 @@ export function EventEditor({ event, onBack, onSave, onMentionClick, onNavigateI
           </div>
           {/* Desktop: time inputs inline */}
           <div className="mt-3 max-md:hidden md:flex md:flex-wrap md:items-center md:gap-2">
-            <Input value={year} onChange={(e) => setYear(e.target.value)} placeholder="年份" className="w-16" />
-            <Input value={month} onChange={(e) => setMonth(e.target.value)} placeholder="月" className="w-12" />
-            <Input value={day} onChange={(e) => setDay(e.target.value)} placeholder="日" className="w-12" />
+            <Input inputMode="numeric" maxLength={6} value={year} onChange={(e) => setYear(sanitizeYearInput(e.target.value))} placeholder="年份" className="w-16" />
+            <Input inputMode="numeric" maxLength={2} value={month} onChange={(e) => setMonth(e.target.value.replace(/[^\d]/g, ''))} placeholder="月" className="w-12" />
+            <Input inputMode="numeric" maxLength={2} value={day} onChange={(e) => setDay(e.target.value.replace(/[^\d]/g, ''))} placeholder="日" className="w-12" />
             <span className="text-xs text-ink-faint">→</span>
-            <Input value={endYear} onChange={(e) => setEndYear(e.target.value)} placeholder="结束年" className="w-16" />
-            <Input value={endMonth} onChange={(e) => setEndMonth(e.target.value)} placeholder="月" className="w-12" />
-            <Input value={endDay} onChange={(e) => setEndDay(e.target.value)} placeholder="日" className="w-12" />
+            <Input inputMode="numeric" maxLength={6} value={endYear} onChange={(e) => setEndYear(sanitizeYearInput(e.target.value))} placeholder="结束年" className="w-16" />
+            <Input inputMode="numeric" maxLength={2} value={endMonth} onChange={(e) => setEndMonth(e.target.value.replace(/[^\d]/g, ''))} placeholder="月" className="w-12" />
+            <Input inputMode="numeric" maxLength={2} value={endDay} onChange={(e) => setEndDay(e.target.value.replace(/[^\d]/g, ''))} placeholder="日" className="w-12" />
             <Separator orientation="vertical" className="h-4 !self-center" />
             <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="地点" className="flex-1" />
             <div className="flex items-center gap-2">

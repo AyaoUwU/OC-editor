@@ -1,4 +1,5 @@
 'use client'
+import { getActiveWorldId, getLegacyWorldId } from '@/lib/world-scope'
 
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
@@ -493,6 +494,9 @@ export function RelationGraph({
         ? `node:${focusedNodeId}`
         : 'main'
 
+  const worldId = getActiveWorldId()
+  const positionScope = worldId !== null && worldId !== getLegacyWorldId() ? `world:${worldId}:${graphScope}` : graphScope
+
   // Older builds could create graph-only edges in localStorage. Promote them
   // once to real relations so they can never diverge from entity panels again.
   useEffect(() => {
@@ -790,7 +794,7 @@ export function RelationGraph({
   }, [allEdges, allNodes, hiddenSectionIds, visibleNodeIds])
 
   const layoutedNodes = useMemo(() => {
-    const savedPositions = loadNodePositions(graphScope)
+    const savedPositions = loadNodePositions(positionScope)
     if (layoutCacheRef.current.scope !== graphScope) {
       layoutCacheRef.current = { scope: graphScope, positions: {} }
     }
@@ -841,7 +845,7 @@ export function RelationGraph({
         .filter(Boolean)
         .join(' '),
     }))
-  }, [filteredNodes, graphScope, hiddenSectionIds, highlightedNodeId, layoutVersion])
+  }, [filteredNodes, positionScope, graphScope, hiddenSectionIds, highlightedNodeId, layoutVersion])
 
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([])
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([])
@@ -860,23 +864,23 @@ export function RelationGraph({
         }
       }
       if (Object.keys(positions).length === 0) return
-      saveNodePositions(graphScope, positions)
+      saveNodePositions(positionScope, positions)
       layoutCacheRef.current = {
         scope: graphScope,
         positions: { ...layoutCacheRef.current.positions, ...positions },
       }
       if (announce) toast.success('布局已保存')
     },
-    [graphScope, nodes],
+    [positionScope, graphScope, nodes],
   )
 
   const autoArrange = useCallback(() => {
     layoutCacheRef.current = { scope: graphScope, positions: {} }
-    saveNodePositions(graphScope, {}, 'replace')
+    saveNodePositions(positionScope, {}, 'replace')
     setLayoutVersion((value) => value + 1)
     window.setTimeout(() => rfRef.current?.fitView({ padding: 0.25, duration: 280 }), 60)
     toast.success('已自动整理，节点不会互相重叠')
-  }, [graphScope])
+  }, [positionScope, graphScope])
 
   const handleExportImage = useCallback(async (options: ExportRelationGraphOptions) => {
     if (exporting) return
@@ -914,7 +918,7 @@ export function RelationGraph({
               : node.id
         positions[key] = { x: node.position.x, y: node.position.y }
       }
-      saveNodePositions(graphScope, positions)
+      saveNodePositions(positionScope, positions)
       if (!hiddenSectionIds.has(sectionId)) {
         const snapshot: Record<string, { x: number; y: number }> = {}
         for (const node of nodes) {
@@ -934,7 +938,7 @@ export function RelationGraph({
         return next
       })
     },
-    [graphScope, hiddenSectionIds, nodes],
+    [positionScope, graphScope, hiddenSectionIds, nodes],
   )
 
   useEffect(() => {
@@ -968,11 +972,11 @@ export function RelationGraph({
         positions[key] = { x: node.position.x, y: node.position.y }
       }
       if (Object.keys(positions).length > 0) {
-        saveNodePositions(graphScope, positions)
+        saveNodePositions(positionScope, positions)
       }
     }, 500)
     return () => clearTimeout(timer)
-  }, [graphScope, nodes])
+  }, [positionScope, graphScope, nodes])
 
   const handleConnect = useCallback(
     async (connection: Connection) => {

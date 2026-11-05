@@ -318,7 +318,7 @@ export function SettingsDialog({
                 <div className="flex items-start gap-2 rounded border border-line bg-paper-card/50 p-3 text-xs leading-5 text-ink-muted">
                   <HardDrive size={14} strokeWidth={2} className="mt-0.5 shrink-0 text-ink-faint" />
                   <span>
-                    条目数据：IndexedDB（OCStudioDB）<br />
+                    条目数据：本机 IndexedDB（Dexie）<br />
                     图片：桌面端 AppData/images，浏览器端仅当前会话 blob
                   </span>
                 </div>
@@ -368,7 +368,7 @@ export function SettingsDialog({
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-ink">版本</span>
                   <span className="text-sm text-ink-muted font-mono">
-                    v0.18.1-alpha · local-first
+                    v0.19.0 · local-first
                   </span>
                 </div>
                 <div className="rounded border border-line p-3 text-xs leading-5 text-ink-muted">

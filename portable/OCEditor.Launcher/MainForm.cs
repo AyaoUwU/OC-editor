@@ -9,7 +9,7 @@ using System.Windows.Forms;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.WinForms;
 
-namespace OCStudio.Launcher;
+namespace OCEditor.Launcher;
 
 internal sealed class MainForm : Form
 {
@@ -71,7 +71,7 @@ internal sealed class MainForm : Form
         ForeColor = Color.FromArgb(227, 223, 216);
         DoubleBuffered = true;
 
-        var iconPath = Path.Combine(AppContext.BaseDirectory, "ocstudio.ico");
+        var iconPath = Path.Combine(AppContext.BaseDirectory, "oceditor.ico");
         if (File.Exists(iconPath))
         {
             Icon = new Icon(iconPath);
@@ -124,7 +124,9 @@ internal sealed class MainForm : Form
             // 可能仍然加载旧 chunk。用 index.html 的写入时间做 cache-bust。
             var appUrl = $"{AppUrl}?v={File.GetLastWriteTimeUtc(Path.Combine(wwwroot, "index.html")).Ticks}";
 
-            var userDataFolder = Environment.GetEnvironmentVariable("OC_STUDIO_USER_DATA")
+            var userDataFolder =
+                Environment.GetEnvironmentVariable("OC_EDITOR_USER_DATA")
+                ?? Environment.GetEnvironmentVariable("OC_STUDIO_USER_DATA")
                 ?? Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                     "OC editor",
@@ -247,7 +249,7 @@ internal sealed class MainForm : Form
             core.DownloadStarting += (_, args) =>
             {
                 var suggested = Path.GetFileName(args.ResultFilePath);
-                if (string.IsNullOrWhiteSpace(suggested)) suggested = "oc-studio-backup.zip";
+                if (string.IsNullOrWhiteSpace(suggested)) suggested = "oc-editor-backup.zip";
                 using var dialog = new SaveFileDialog
                 {
                     Title = "保存文件",

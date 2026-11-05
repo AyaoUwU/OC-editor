@@ -15,6 +15,7 @@ export function parseCharacterFolders(value: unknown): CharacterFolder[] {
     }
     ids.add(item.id)
     return {
+      ...(typeof item.worldId === 'number' ? { worldId: item.worldId } : {}),
       id: item.id,
       name: item.name.trim(),
       order: typeof item.order === 'number' && Number.isFinite(item.order) ? item.order : index,
@@ -36,7 +37,7 @@ export function planCharacterFolderImport(
   const occupied = new Set([...folders.keys(), ...incoming.map((folder) => folder.id)])
   for (const folder of incoming) {
     const existing = folders.get(folder.id)
-    if (existing && strategy === 'keep-both' && existing.name !== folder.name) {
+    if (existing && (existing.worldId !== folder.worldId || (strategy === 'keep-both' && existing.name !== folder.name))) {
       let suffix = 1
       let id = `${folder.id}-import-${suffix}`
       while (occupied.has(id)) id = `${folder.id}-import-${++suffix}`

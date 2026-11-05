@@ -3,8 +3,8 @@
     "version": 2,
     "exportedAt": "2026-10-24T07:55:05.469Z",
     "meta": {
-      "app": "OC Studio",
-      "format": "oc-studio-backup",
+      "app": "OC editor",
+      "format": "oc-editor-backup",
       "offline": true,
       "includes": [
         "characters",
@@ -94490,7 +94490,7 @@
     {
       "id": 9001,
       "title": "雾港来信",
-      "author": "OC Studio",
+      "author": "OC editor",
       "synopsis": "一封没有寄件人的信，把两个人带回被雾吞没的港口。",
       "targetWords": 80000,
       "chapters": [

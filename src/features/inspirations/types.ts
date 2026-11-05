@@ -1,4 +1,5 @@
 export interface Inspiration {
+  worldId?: number
   id: string
   title: string
   content: string

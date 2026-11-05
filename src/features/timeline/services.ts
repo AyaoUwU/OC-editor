@@ -1,25 +1,22 @@
 import { db } from '@/lib/db'
+import { filterByActiveWorld } from '@/lib/world-scope'
 import { logOperation } from '@/lib/sync'
 import type { Event } from '@/types'
 import type { TimelineEvent } from './types'
 import { pickTimelineFields } from './types'
+
+import { parseYear } from '@/features/events/utils'
 
 export interface TimelineFilter {
   characterId?: number
   countryId?: number
 }
 
-function parseYear(time: string): number | null {
-  if (!time) return null
-  const match = /^-?\d+/.exec(time)
-  return match ? parseInt(match[0], 10) : null
-}
-
 export async function getTimelineEvents(
   filter?: TimelineFilter,
 ): Promise<TimelineEvent[]> {
   const all = await db.events.orderBy('time').toArray()
-  let alive = all.filter((e) => !e.deleted)
+  let alive = filterByActiveWorld(all).filter((e) => !e.deleted)
 
   if (filter?.characterId !== undefined) {
     alive = alive.filter(

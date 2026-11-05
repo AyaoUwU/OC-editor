@@ -1,34 +1,45 @@
 ## 下载
 
-**最新版：v0.18.3** → [GitHub Releases](https://github.com/nekibud/OC-editor/releases/latest)
+**最新版：v0.19.0（多世界观隔离 + 关系图/时间线修复）** → [GitHub Releases](https://github.com/nekibud/OC-editor/releases/latest)
 
-- [便携版 OC-editor-0.18.3-portable-win64.zip](https://github.com/nekibud/OC-editor/releases/download/v0.18.3/OC-editor-0.18.3-portable-win64.zip) ← **推荐：解压即用，含「卸载 OC editor.cmd」**
-- [安装程序 OC-editor-0.18.3-Setup.exe](https://github.com/nekibud/OC-editor/releases/download/v0.18.3/OC-editor-0.18.3-Setup.exe)
-- [MSI 安装包 OC-editor-0.18.3.msi](https://github.com/nekibud/OC-editor/releases/download/v0.18.3/OC-editor-0.18.3.msi)
-- [安装说明 / SHA256](https://github.com/nekibud/OC-editor/releases/download/v0.18.3/INSTALL-Windows10.txt)
+- [便携版 OC-editor-0.19.0-portable-win64.zip](https://github.com/nekibud/OC-editor/releases/download/v0.19.0/OC-editor-0.19.0-portable-win64.zip) ← **推荐：解压即用，不需要安装**
+- [安装程序 OC-editor-0.19.0-Setup.exe](https://github.com/nekibud/OC-editor/releases/download/v0.19.0/OC-editor-0.19.0-Setup.exe)
+- [微软商店 MSIX 包 OC-editor-0.19.0.msix](https://github.com/nekibud/OC-editor/releases/download/v0.19.0/OC-editor-0.19.0.msix)（Microsoft Store 提交用）
 
-> **卸载**：设置 → 应用 → OC editor → 卸载；或开始菜单「卸载 OC editor」；便携版双击文件夹里的
-> 「卸载 OC editor.cmd」。只删程序，个人创作数据保留。
+> **0.19.0 重点**：先选世界观再创作（角色/事件/时间线/关系图按世界观隔离）；
+> 修复时间线超大年份卡死；修复同一对角色多条关系导致的闪屏与关系图空白页。
+> 旧数据首次启动会自动归入「默认世界观」。
+
+> **改名说明**：产品名已全面统一为 **OC editor**（程序 OCeditor.exe、快捷方式、安装目录、卸载项、
+> 微软商店显示名）。0.18.1 及更早版本名为 OC Studio，其数据会在首次启动时自动从
+> `%LOCALAPPDATA%\OC Studio\WebView2` 复制到 `%LOCALAPPDATA%\OC editor\WebView2`，不会丢。
 >
-> **升级**：直接运行新版安装包即可，安装前会自动清理旧版（含改名前的 OC Studio），不会留两份程序。
+> 安装版如果报“无法打开此安装程序包”（错误 1620）：那是系统里的 Windows Installer 被禁用/被拦截，
+> 请用便携版 zip 或新版 Setup（二者都不经过 Windows Installer）。
 
 ---
 # OC editor
 
 本地优先的原创角色（OC）与世界观创作工作台。
 
-当前版本：**v0.18.3 · local-first**
+当前版本：**v0.19.0 · local-first**
 
-本仓库在 OC-Studio 原有角色 / 事件 / 国家 / 词条 / 时间线 / 关系图谱骨架上增量扩展，
-新增了**程序化世界地图生成器**与**可折叠树形表格**。运行时完全离线：无账号、无云同步、
+本仓库在原有角色 / 事件 / 国家 / 词条 / 时间线 / 关系图谱骨架上增量扩展，
+新增了**多世界观隔离**、**程序化世界地图生成器**与**可折叠树形表格**。运行时完全离线：无账号、无云同步、
 无遥测、无崩溃上报、无分析埋点、无自动更新。
 
 ---
 
 ## 功能
 
+**多世界观（新增）**
+启动时先选择世界观，进入后再编辑。角色、武器/宠物、事件、国家、词条、自定义分类、小说、地图、
+时期、时间线、关系图、相册、搜索与回收站都按世界观隔离，互不混杂。顶栏/侧栏/移动端可随时切换、
+新建、重命名或删除世界观。
+
 **角色 / 事件 / 国家**
 完整的角色信息卡（简介、生平、立绘），事件支持时间段和负数年份，国家可关联角色与事件。
+同一对角色可以建立多条关系（如「朋友」「师徒」），关系图与「相关人物」双向同步。
 
 **世界观百科**
 树状词条编辑器，支持  `@` 引用，跨条目串联设定。

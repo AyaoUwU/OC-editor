@@ -1,4 +1,5 @@
 import { db } from '@/lib/db'
+import { filterByActiveWorld } from '@/lib/world-scope'
 import { logOperation } from '@/lib/sync'
 import type { TrashItem, TrashItemType } from './types'
 
@@ -28,11 +29,11 @@ export async function getDeletedItems(): Promise<TrashItem[]> {
       db.maps.toArray(),
     ])
 
-  const deletedChars = allChars.filter((c) => c.deleted === true || (c.deleted as unknown) === 1)
-  const deletedEvents = allEvents.filter((e) => e.deleted === true || (e.deleted as unknown) === 1)
-  const deletedCountries = allCountries.filter((c) => c.deleted === true || (c.deleted as unknown) === 1)
-  const deletedEntries = allEntries.filter((e) => e.deleted === true || (e.deleted as unknown) === 1)
-  const deletedMaps = allMaps.filter((map) => map.deleted === true || (map.deleted as unknown) === 1)
+  const deletedChars = filterByActiveWorld(allChars).filter((c) => c.deleted === true || (c.deleted as unknown) === 1)
+  const deletedEvents = filterByActiveWorld(allEvents).filter((e) => e.deleted === true || (e.deleted as unknown) === 1)
+  const deletedCountries = filterByActiveWorld(allCountries).filter((c) => c.deleted === true || (c.deleted as unknown) === 1)
+  const deletedEntries = filterByActiveWorld(allEntries).filter((e) => e.deleted === true || (e.deleted as unknown) === 1)
+  const deletedMaps = filterByActiveWorld(allMaps).filter((map) => map.deleted === true || (map.deleted as unknown) === 1)
 
   const items: TrashItem[] = []
 
@@ -134,7 +135,7 @@ export async function permanentlyDeleteAll(): Promise<number> {
   return items.length
 }
 
-export const TRASH_RETENTION_KEY = 'oc-studio-trash-retention-days'
+export const TRASH_RETENTION_KEY = 'oc-editor-trash-retention-days'
 
 export async function purgeExpiredTrash(retentionDays: number): Promise<number> {
   if (!Number.isFinite(retentionDays) || retentionDays <= 0) return 0

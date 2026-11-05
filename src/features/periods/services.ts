@@ -1,4 +1,5 @@
 import { db } from '@/lib/db'
+import { filterByActiveWorld } from '@/lib/world-scope'
 import { logOperation } from '@/lib/sync'
 import type { Period } from '@/types'
 
@@ -6,7 +7,7 @@ const TABLE = 'periods'
 
 export async function getAllPeriods(): Promise<Period[]> {
   const all = await db.periods.orderBy('startTime').toArray()
-  return all.filter((p) => !p.deleted)
+  return filterByActiveWorld(all).filter((p) => !p.deleted)
 }
 
 export async function getPeriod(id: number): Promise<Period | undefined> {

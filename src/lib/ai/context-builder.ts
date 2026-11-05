@@ -1,4 +1,5 @@
 import { db } from '@/lib/db'
+import { filterByActiveWorld } from '@/lib/world-scope'
 
 interface EntityContext {
   type: string
@@ -81,12 +82,16 @@ async function buildWorldEntryContext(id: number): Promise<string> {
 }
 
 export async function buildProjectContext(): Promise<string> {
-  const [characters, events, countries, worldEntries] = await Promise.all([
+  const [charactersRaw, eventsRaw, countriesRaw, entriesRaw] = await Promise.all([
     db.characters.filter((c) => !c.deleted).toArray(),
     db.events.filter((e) => !e.deleted).toArray(),
     db.countries.filter((c) => !c.deleted).toArray(),
     db.worldEntries.filter((w) => !w.deleted).toArray(),
   ])
+  const characters = filterByActiveWorld(charactersRaw)
+  const events = filterByActiveWorld(eventsRaw)
+  const countries = filterByActiveWorld(countriesRaw)
+  const worldEntries = filterByActiveWorld(entriesRaw)
 
   const parts: string[] = ['# 创作项目概要']
   parts.push(`\n## 角色 (${characters.length})`)
