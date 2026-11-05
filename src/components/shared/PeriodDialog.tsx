@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react'
 import { Check } from 'lucide-react'
 import type { Period } from '@/types'
 import { PERIOD_COLORS } from '@/types'
-import { parseTime, assembleTime, parseYear } from '@/features/events/utils'
+import { parseTime, assembleTime, parseYear, sanitizeYearInput } from '@/features/events/utils'
 
 interface PeriodDialogProps {
   open: boolean
@@ -81,13 +81,13 @@ export function PeriodDialog({ open, period, onSave, onClose }: PeriodDialogProp
           <label className="block text-sm text-ink-muted mb-1.5">开始 / 结束时间</label>
           <div className="flex items-center gap-2 max-md:flex-col max-md:items-start">
             <div className="flex items-center gap-2">
-              <input type="text" value={startYear} onChange={(e) => setStartYear(e.target.value)} placeholder="年" className="h-9 w-16 rounded border border-line bg-black/5 dark:bg-white/5 px-2 text-sm text-ink placeholder:text-ink-faint focus:border-line-hover focus:outline-none" />
+              <input type="text" inputMode="numeric" maxLength={6} value={startYear} onChange={(e) => setStartYear(sanitizeYearInput(e.target.value))} placeholder="年" className="h-9 w-16 rounded border border-line bg-black/5 dark:bg-white/5 px-2 text-sm text-ink placeholder:text-ink-faint focus:border-line-hover focus:outline-none" />
               <input type="text" value={startMonth} onChange={(e) => setStartMonth(e.target.value)} placeholder="月" className="h-9 w-12 rounded border border-line bg-black/5 dark:bg-white/5 px-2 text-sm text-ink placeholder:text-ink-faint focus:border-line-hover focus:outline-none" />
               <input type="text" value={startDay} onChange={(e) => setStartDay(e.target.value)} placeholder="日" className="h-9 w-12 rounded border border-line bg-black/5 dark:bg-white/5 px-2 text-sm text-ink placeholder:text-ink-faint focus:border-line-hover focus:outline-none" />
               <span className="text-xs text-ink-faint">→</span>
             </div>
             <div className="flex items-center gap-2">
-              <input type="text" value={endYear} onChange={(e) => setEndYear(e.target.value)} placeholder="年" className="h-9 w-16 rounded border border-line bg-black/5 dark:bg-white/5 px-2 text-sm text-ink placeholder:text-ink-faint focus:border-line-hover focus:outline-none" />
+              <input type="text" inputMode="numeric" maxLength={6} value={endYear} onChange={(e) => setEndYear(sanitizeYearInput(e.target.value))} placeholder="年" className="h-9 w-16 rounded border border-line bg-black/5 dark:bg-white/5 px-2 text-sm text-ink placeholder:text-ink-faint focus:border-line-hover focus:outline-none" />
               <input type="text" value={endMonth} onChange={(e) => setEndMonth(e.target.value)} placeholder="月" className="h-9 w-12 rounded border border-line bg-black/5 dark:bg-white/5 px-2 text-sm text-ink placeholder:text-ink-faint focus:border-line-hover focus:outline-none" />
               <input type="text" value={endDay} onChange={(e) => setEndDay(e.target.value)} placeholder="日" className="h-9 w-12 rounded border border-line bg-black/5 dark:bg-white/5 px-2 text-sm text-ink placeholder:text-ink-faint focus:border-line-hover focus:outline-none" />
             </div>

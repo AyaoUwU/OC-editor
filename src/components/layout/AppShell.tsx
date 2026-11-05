@@ -16,6 +16,8 @@ import { MobileNavigationProvider } from "@/components/layout/MobileNavigationCo
 import { TrashOverlayProvider, useTrashOverlay } from "@/components/layout/TrashOverlayContext"
 import { MobilePageHeaderProvider } from "@/components/layout/MobilePageHeaderContext"
 import { TrashView } from "@/features/trash/components/TrashView"
+import { WorldPicker } from "@/features/worlds/components/WorldPicker"
+import { useWorlds } from "@/features/worlds/hooks/useWorlds"
 import { migratePresetEntriesToCharacters } from "@/features/characters/preset-migration"
 import { useSettings } from "@/lib/settings"
 import { useKeyboard } from "@/lib/KeyboardContext"
@@ -54,6 +56,7 @@ function AppShellChrome({ settings, children }: { settings: ReturnType<typeof us
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { settings } = useSettings()
+  const { ready: worldsReady, activeWorld, error: worldsError } = useWorlds()
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [settingsTab, setSettingsTab] = useState("general")
 
@@ -67,8 +70,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   }, [])
 
   useEffect(() => {
+    if (!activeWorld) return
     void migratePresetEntriesToCharacters()
-  }, [])
+  }, [activeWorld])
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -183,6 +187,29 @@ export function AppShell({ children }: { children: ReactNode }) {
     }
     requestIdleCallback(() => { void init() })
   }, [])
+
+  // 先选世界观：没有选中任何世界观时，只显示选择页，避免不同世界的数据混在一起。
+  if (!worldsReady) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-paper">
+        <span className="text-sm text-ink-muted">加载中…</span>
+      </div>
+    )
+  }
+
+  if (!activeWorld) {
+    return (
+      <>
+        {worldsError ? (
+          <div className="fixed left-1/2 top-3 z-[150] -translate-x-1/2 rounded-lg border border-error/40 bg-paper px-3 py-1.5 text-xs text-error shadow-sm">
+            世界观加载失败：{worldsError}
+          </div>
+        ) : null}
+        <WorldPicker mode="gate" />
+        <Toaster />
+      </>
+    )
+  }
 
   return (
     <SettingsTriggerContext.Provider value={{ openSettings, closeSettings }}>

@@ -4,8 +4,8 @@
 
 ## 参考的已有方案
 
-- `portable/OCStudio.Launcher`：.NET WinForms + WebView2，自包含单文件发布。
-- `installer/OCStudio.wxs`：WiX per-user MSI，安装到 `LocalAppData\Programs\OC Studio`。
+- `portable/OCEditor.Launcher`：.NET WinForms + WebView2，自包含单文件发布。
+- `installer/OCEditor.wxs`：WiX per-user MSI，安装到 `LocalAppData\Programs\OC editor`。
 - `installer/iexpress.sed`：IExpress 把 MSI 包成单文件 Setup EXE。
 - 前端通过 `SetVirtualHostNameToFolderMapping` 映射 `wwwroot`，运行时仍然完全离线。
 
@@ -15,7 +15,7 @@
    - MSI 增加 `VersionNT64`、`VersionNT >= 1000`、`MsiNTProductType = 1` 启动条件。
    - 启动器再次检查 Windows 10 build 17763（1809），低于基线给出明确提示。
 2. **单实例**
-   - `Local\OCStudio.SingleInstance` 命名互斥量；重复启动时激活已有窗口，避免 WebView2 数据目录被两个进程同时占用。
+   - `Local\OCEditor.SingleInstance` 命名互斥量；重复启动时激活已有窗口，避免 WebView2 数据目录被两个进程同时占用。
 3. **DPI / 长路径**
    - `app.manifest` 增加 PerMonitorV2 DPI 与 longPathAware；保留 `asInvoker`，不要求管理员权限。
 4. **WebView2 诊断**
@@ -31,6 +31,6 @@
 
 - `dotnet publish` 成功，生成的 EXE 版本为 0.18.1.0。
 - WiX 构建成功；MSI 的 Template 为 `x64;2052`，LaunchCondition 表包含上述三条系统条件。
-- 使用 `msiexec /a` 做管理安装解包验证：89 个文件完整解出，`OCStudio.exe` 版本 0.18.1.0，`wwwroot/index.html` 为最新前端。
-- IExpress Setup EXE 内嵌最终 MSI（7-Zip 可列出 `OC-Studio-Setup-0.18.1.msi`）。
+- 使用 `msiexec /a` 做管理安装解包验证：89 个文件完整解出，`OCEditor.exe` 版本 0.18.1.0，`wwwroot/index.html` 为最新前端。
+- IExpress Setup EXE 内嵌最终 MSI（7-Zip 可列出 `OCEditor-Setup-0.18.1.msi`）。
 - 当前 DSH 沙箱会拦截 WebView2 的 CrashSender 子进程，因此无法在沙箱内完成可视化启动回归；在正常桌面会话中运行不受此限制。

@@ -59,7 +59,7 @@ interface TimelineViewProps {
   onSelectEvent: (id: number) => void
 }
 
-const HIDDEN_TIMELINE_EVENTS_KEY = 'oc-studio-timeline-hidden-events'
+const HIDDEN_TIMELINE_EVENTS_KEY = 'oc-editor-timeline-hidden-events'
 
 function loadHiddenTimelineEvents(): Set<number> {
   if (typeof window === 'undefined') return new Set()

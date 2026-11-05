@@ -2,8 +2,8 @@
 
 import { importData } from '@/lib/import'
 
-const SEED_FLAG = 'oc-studio-external-seed-v1'
-const CUSTOM_SECTIONS_KEY = 'oc-studio-custom-sections'
+const SEED_FLAG = 'oc-editor-external-seed-v1'
+const CUSTOM_SECTIONS_KEY = 'oc-editor-custom-sections'
 
 interface ExternalSeed {
   backup?: unknown
@@ -22,9 +22,12 @@ function countCustomSections(): number {
   }
 }
 
+// 与 novel/store.ts 共用同一个历史数据库名。
+const NOVEL_DB_NAME = 'OCStudioNovels'
+
 async function countNovels(): Promise<number> {
   return new Promise((resolve) => {
-    const request = indexedDB.open('OCStudioNovels')
+    const request = indexedDB.open(NOVEL_DB_NAME)
     request.onerror = () => resolve(0)
     request.onupgradeneeded = () => {
       const db = request.result
@@ -57,7 +60,7 @@ async function countNovels(): Promise<number> {
 async function writeNovels(novels: unknown): Promise<void> {
   if (!Array.isArray(novels) || novels.length === 0) return
   await new Promise<void>((resolve) => {
-    const request = indexedDB.open('OCStudioNovels')
+    const request = indexedDB.open(NOVEL_DB_NAME)
     request.onerror = () => resolve()
     request.onupgradeneeded = () => {
       const db = request.result
@@ -127,7 +130,7 @@ export async function applyExternalSeed(): Promise<boolean> {
       window.localStorage.setItem(CUSTOM_SECTIONS_KEY, JSON.stringify(seed.customSections))
     }
     if (seed.settings && typeof seed.settings === 'object') {
-      window.localStorage.setItem('oc-studio-settings', JSON.stringify(seed.settings))
+      window.localStorage.setItem('oc-editor-settings', JSON.stringify(seed.settings))
     }
     await writeNovels(seed.novels)
     window.localStorage.setItem(SEED_FLAG, '1')

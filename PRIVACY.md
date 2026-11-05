@@ -1,57 +1,65 @@
-# OC editor 隐私政策
+# OC editor 隐私与离线说明
 
-最后更新：2026-11-03
+OC editor 是一个本地优先的原创角色（OC）与世界观创作桌面应用。当前构建的硬约束是：
+**运行时完全离线、零上传、零遥测。**
 
-OC editor（微软商店名称：OC editor；包标识：nekibud.OCeditor）是一个本地优先的原创角色与世界观创作桌面应用。本政策说明应用会访问哪些数据、数据保存在哪里，以及我们如何处理这些数据。
+## 运行时网络
 
-## 1. 应用会访问的数据
+- 不请求任何账号、云同步、遥测、崩溃上报、分析埋点或自动更新服务。
+- 不加载任何 CDN、外部字体、外部脚本、外部样式表。
+- 不调用在线地形、气候、地图瓦片或地理编码 API。
+- 世界地图的所有图层（高程、温度、湿度、生物群系、河流、湖泊）在本机 Web Worker 内计算。
+- 关系图谱、编辑器、树形表格、JSON/ZIP 备份均在本机完成。
+- 原在线 AI 能力已从离线构建中移除；`src/lib/ai/` 仅保留不联网的本地上下文构建工具。
 
-为了提供创作功能，应用会访问你主动录入或选择的内容，包括：
+## 内容安全策略（CSP）
 
-- 角色、事件、国家、武器、宠物、世界观词条、关系、时间线和地图参数；
-- 你为角色、事件、国家等选择的照片、头像、头图和 OC 动画；
-- 你的应用设置、备份文件和导出文件。
+Tauri 生产构建的 CSP 以 `default-src 'self'` 为基线，仅允许：
 
-这些内容由你创建或选择，应用不会在后台扫描你的其他文件。
+- 本地打包脚本与样式（为兼容 Next.js 静态导出的内联样式/启动脚本，允许 `'unsafe-inline'`；不使用远程来源）。
+- 本地图片、`data:`、`blob:` 与 Tauri asset 协议（仅 AppData/images）。
+- 本地 IPC（`ipc:` / `http://ipc.localhost`）。
+- 开发模式额外允许 `localhost:3000` 与 HMR WebSocket，仅用于开发，不进入生产。
 
-## 2. 数据保存在哪里
+配置位置：`src-tauri/tauri.conf.json` 的 `app.security.csp` / `devCsp`。
 
-- 角色、事件、国家、词条、标签、关系、地图参数等：保存在本机 WebView2/IndexedDB 数据目录。
-- 图片和动画：保存在本机应用数据目录，路径为 %LOCALAPPDATA%\OC Studio。
-- 备份：仅保存到你主动选择的导出位置。
-- 应用不提供账号系统、云同步或服务器端存储。
+## 数据位置
 
-## 3. 不收集、不上传、不共享
+| 数据 | 位置 |
+| --- | --- |
+| 角色、事件、国家、词条、标签、关系、地图参数/种子 | 本机 IndexedDB（Dexie 管理；数据库名沿用 `OCStudioDB` 以兼容旧数据） |
+| 图片（桌面端） | Tauri `AppData/images/`，选择文件时复制到该目录，不引用外部 URL |
+| 图片（浏览器开发预览） | 当前会话的 `blob:`；刷新后不持久，仅用于开发 |
+| 导出备份 | 用户主动选择的下载位置；JSON 或 ZIP |
 
-- 应用不收集姓名、电话号码、生物识别信息、位置、联系人、录音、通信内容等个人信息。
-- 应用不包含遥测、分析埋点、广告、崩溃上报或自动更新。
-- 应用运行时不向外部服务器发送你的创作数据。
-- 我们不会出售、出租或共享你的创作数据。
-- 应用使用 Microsoft Edge WebView2 运行时显示界面；WebView2 是微软组件，其自身可能按微软隐私政策处理诊断数据，但 OC editor 不会通过它上传你的创作内容。
+## 导入安全
 
-## 4. 你的控制权
+- 导入 JSON/ZIP 时，会递归清除图片字段中的 `http(s)` URL，只保留 `data:`、`blob:` 与本地相对路径。
+- 运行时 `resolveImageUrl()` 也会把远程图片降级为本地占位图，CSP 同时禁止远程 `img-src`。
+- ZIP 读取支持 store/deflate；只解析顶层的 `oc-data.json`，不执行压缩包内任何脚本。
 
-- 你可以在应用内编辑、删除或从回收站清理内容。
-- 你可以随时导出 JSON/ZIP 备份。
-- 卸载应用不会自动删除 %LOCALAPPDATA%\OC Studio；如需彻底删除本机数据，请在退出应用后手动删除该文件夹。
-- 删除应用或数据不需要联系开发者。
+## 备份与恢复
 
-## 5. 儿童隐私
+- “设置 → 数据”提供 JSON 与 ZIP 两种导出。
+- 备份包含：角色、事件、国家、词条、标签、嵌入条目的关系，以及地图的 `seed + params`。
+- 地图原始图层不进入备份：相同 seed + 参数可在本机确定性重建相同地图，避免数 MB 的冗余数据。
+- 图片二进制目前不进入备份，仍保存在本机数据目录；迁移机器时需同时复制 AppData/images。
 
-OC editor 不是面向 13 岁以下儿童的产品，我们不会有意收集儿童的个人信息。由于应用不收集或上传个人信息，所有创作内容仅保存在你的设备上。
+## 已知边界
 
-## 6. 政策更新
+- 浏览器开发预览不是最终交付物；桌面安装包由 Tauri 提供 CSP 与本地文件系统边界。
+- `blob:` 图片在浏览器预览中不持久；桌面端使用 AppData 文件。
+- 移动端同步不在首期范围；未来如提供，默认关闭，仅手动导入/导出或显式连接自托管服务。
+- 无自动更新机制；更新由用户手动安装新版本。
 
-如果应用的数据处理方式发生变化，我们会更新本页面并修改“最后更新”日期。重大变化会通过项目仓库说明。
+## 审计建议
 
-## 7. 联系方式
+```bash
+# 运行时应无外部网络调用（除本地 blob/asset）
+rg "fetch\\(|XMLHttpRequest|WebSocket|EventSource|sendBeacon" src
 
-如对本政策有疑问，请通过以下公开页面联系我们：
+# 检查构建产物中的外部 URL
+rg "https?://" out
+```
 
-https://github.com/nekibud/OC-editor/issues
-
----
-
-## English summary
-
-OC editor is a local-first desktop app. It accesses only the characters, images, animations, backups and settings that you create or select, and stores them locally under %LOCALAPPDATA%\OC Studio and the local WebView2 profile. It has no account system, cloud sync, telemetry, analytics, ads, crash reporting, or automatic updates, and it does not upload or share your creative data. You can delete content in the app or remove the local data folder after uninstalling. Contact: https://github.com/nekibud/OC-editor/issues
+构建产物中的 `http://` 若出现，通常是 SVG 命名空间、许可证文本或 Tauri asset 协议说明，不应被运行时当作网络请求目标。

@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useEffect, useCallback, useState } from 'react'
 import { db } from '@/lib/db'
+import { filterByActiveWorld } from '@/lib/world-scope'
 
 export interface AlbumEntry {
   url: string
@@ -18,7 +19,7 @@ export function useAlbumData() {
   const load = useCallback(async () => {
     const result: AlbumEntry[] = []
 
-    const characters = (await db.characters.toArray()).filter((c) => !c.deleted)
+    const characters = filterByActiveWorld(await db.characters.toArray()).filter((c) => !c.deleted)
     for (const c of characters) {
       if (c.avatarUrl) {
         result.push({ url: c.avatarUrl, sourceName: c.name, sourceType: 'character', sourceId: c.id!, category: 'avatar' })
@@ -43,7 +44,7 @@ export function useAlbumData() {
       }
     }
 
-    const events = (await db.events.toArray()).filter((e) => !e.deleted)
+    const events = filterByActiveWorld(await db.events.toArray()).filter((e) => !e.deleted)
     for (const e of events) {
       if (e.headerUrl) {
         result.push({ url: e.headerUrl, sourceName: e.title, sourceType: 'event', sourceId: e.id!, category: 'header' })
@@ -56,7 +57,7 @@ export function useAlbumData() {
       }
     }
 
-    const countries = (await db.countries.toArray()).filter((c) => !c.deleted)
+    const countries = filterByActiveWorld(await db.countries.toArray()).filter((c) => !c.deleted)
     for (const c of countries) {
       if (c.flagUrl) {
         result.push({ url: c.flagUrl, sourceName: c.name, sourceType: 'country', sourceId: c.id!, category: 'flag' })

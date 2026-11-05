@@ -39,7 +39,10 @@ export default function RootLayout({
       <head>
           <script
             dangerouslySetInnerHTML={{
-              __html: `(function(){try{var s=JSON.parse(localStorage.getItem('oc-studio-settings')||'{}');var t=s.theme||'auto';var d=t==='auto'?window.matchMedia('(prefers-color-scheme:dark)').matches:t==='dark';if(d){document.documentElement.classList.add('dark');document.documentElement.setAttribute('data-theme','dark')}if(window.__TAURI__||window.__TAURI_INTERNALS__){document.documentElement.classList.add('tauri-mica')}}catch(e){}})()`,
+              __html: `(function(){try{
+var legacy={'oc-studio-settings':'oc-editor-settings','oc-studio-custom-sections':'oc-editor-custom-sections','oc-studio-relation-edge-controls':'oc-editor-relation-edge-controls','oc-studio-timeline-hidden-events':'oc-editor-timeline-hidden-events','oc-studio-active-map-id':'oc-editor-active-map-id','oc-studio-trash-retention-days':'oc-editor-trash-retention-days','oc-studio-active-world-id':'oc-editor-active-world-id','oc-studio-external-seed-v1':'oc-editor-external-seed-v1'};
+for(var k in legacy){if(!localStorage.getItem(legacy[k])&&localStorage.getItem(k)){localStorage.setItem(legacy[k],localStorage.getItem(k))}}
+var s=JSON.parse(localStorage.getItem('oc-editor-settings')||'{}');var t=s.theme||'auto';var d=t==='auto'?window.matchMedia('(prefers-color-scheme:dark)').matches:t==='dark';if(d){document.documentElement.classList.add('dark');document.documentElement.setAttribute('data-theme','dark')}if(window.__TAURI__||window.__TAURI_INTERNALS__){document.documentElement.classList.add('tauri-mica')}}catch(e){}})()`,
             }}
           />
         </head>

@@ -2,6 +2,11 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { pickAccentColor, resolveAccentColor } from '@/lib/entity-accent'
+import {
+  activeWorldIdForWrite,
+  belongsToActiveWorld,
+  WORLD_CHANGED_EVENT,
+} from '@/lib/world-scope'
 
 export type CustomLinkField =
   | 'characterIds'
@@ -52,6 +57,8 @@ export interface CustomScopedEdge {
 
 export interface CustomSection {
   id: string
+  /** 所属世界观；旧数据没有该字段时归入最早创建的世界观。 */
+  worldId?: number
   name: string
   accentColor?: string
   description: string
@@ -77,7 +84,7 @@ interface LegacyCustomSection extends Partial<CustomSection> {
   worldEntryIds?: number[]
 }
 
-const STORAGE_KEY = 'oc-studio-custom-sections'
+const STORAGE_KEY = 'oc-editor-custom-sections'
 const CHANGE_EVENT = 'oc-custom-sections-changed'
 
 function makeId(prefix: string): string {
@@ -167,6 +174,7 @@ function normalizeSection(section: LegacyCustomSection): CustomSection {
   }
   return {
     id: section.id ?? makeId('custom'),
+    worldId: section.worldId,
     name: section.name ?? '新分类',
     accentColor: resolveAccentColor(section.accentColor, section.name ?? '新分类'),
     description: section.description ?? '',
@@ -222,6 +230,7 @@ function symmetrizeEntryLinks(sections: CustomSection[]): CustomSection[] {
   }))
 }
 
+/** 读取全部世界观的自定义分类（写入时必须基于它，避免覆盖其他世界观）。 */
 function loadCustomSections(): CustomSection[] {
   if (typeof window === 'undefined') return []
   try {
@@ -236,6 +245,11 @@ function loadCustomSections(): CustomSection[] {
   }
 }
 
+/** 只返回当前世界观下的分类（界面展示用）。 */
+function loadVisibleSections(): CustomSection[] {
+  return loadCustomSections().filter((section) => belongsToActiveWorld(section))
+}
+
 function saveCustomSections(sections: CustomSection[]): void {
   if (typeof window === 'undefined') return
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(sections))
@@ -243,7 +257,7 @@ function saveCustomSections(sections: CustomSection[]): void {
 }
 
 export function getCustomSection(id: string): CustomSection | null {
-  return loadCustomSections().find((section) => section.id === id) ?? null
+  return loadVisibleSections().find((section) => section.id === id) ?? null
 }
 
 const PRESET_DEFINITIONS: Array<{
@@ -256,7 +270,7 @@ const PRESET_DEFINITIONS: Array<{
 ]
 
 export function getPresetSection(preset: 'weapon' | 'pet'): CustomSection | null {
-  return loadCustomSections().find((section) => section.preset === preset) ?? null
+  return loadVisibleSections().find((section) => section.preset === preset) ?? null
 }
 
 export interface PresetEntryTransfer {
@@ -306,7 +320,12 @@ export function clearPresetEntries(): void {
  */
 export function ensurePresetSections(): void {
   if (typeof window === 'undefined') return
+  const activeWorldId = activeWorldIdForWrite()
+  if (activeWorldId === undefined) return
   const current = loadCustomSections()
+  const visiblePresets = current
+    .filter((section) => belongsToActiveWorld(section))
+    .map((section) => section.preset)
   let changed = false
   const next = current.map((section) => {
     const definition = section.preset
@@ -320,10 +339,11 @@ export function ensurePresetSections(): void {
     return { ...section, preset: definition.preset, name: definition.name }
   })
   for (const definition of PRESET_DEFINITIONS) {
-    if (next.some((section) => section.preset === definition.preset)) continue
+    if (visiblePresets.includes(definition.preset)) continue
     changed = true
     next.push({
       id: makeId('custom'),
+      worldId: activeWorldId,
       name: definition.name,
       accentColor: pickAccentColor(definition.name),
       description: definition.description,
@@ -367,13 +387,15 @@ export function useCustomSections(): {
   const [sections, setSections] = useState<CustomSection[]>([])
 
   useEffect(() => {
-    const reload = (): void => setSections(loadCustomSections())
+    const reload = (): void => setSections(loadVisibleSections())
     reload()
     window.addEventListener(CHANGE_EVENT, reload)
     window.addEventListener('storage', reload)
+    window.addEventListener(WORLD_CHANGED_EVENT, reload)
     return () => {
       window.removeEventListener(CHANGE_EVENT, reload)
       window.removeEventListener('storage', reload)
+      window.removeEventListener(WORLD_CHANGED_EVENT, reload)
     }
   }, [])
 
@@ -394,6 +416,7 @@ export function useCustomSections(): {
     (name: string, description = '', preset?: 'weapon' | 'pet'): CustomSection => {
     const section: CustomSection = {
       id: makeId('custom'),
+      worldId: activeWorldIdForWrite(),
       name: name.trim() || '新分类',
       accentColor: pickAccentColor(name),
       description: description.trim(),

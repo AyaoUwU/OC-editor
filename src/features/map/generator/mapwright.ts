@@ -9,7 +9,7 @@ import { buildRenderContext } from './render'
 import type { MapStats, WorldMapParams } from '../types'
 
 /**
- * mapwright (`oc-studio/mapwright@1`) JSON 的最小消费层。
+ * mapwright (`oc-editor/mapwright@1`) JSON 的最小消费层。
  * mapwright 负责 Voronoi/侵蚀/河流/气候，这里只把它映射成现有的 Canvas 渲染状态，
  * 不引入运行时 Python 依赖；JSON 可由本地 sidecar 生成后导入。
  */

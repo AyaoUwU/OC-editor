@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Download, ExternalLink, FolderOpen, Map as MapIcon, RefreshCw, Star, Trash2, Upload } from 'lucide-react'
 import type { WorldMapRecord } from '@/types'
 import { db } from '@/lib/db'
+import { filterByActiveWorld } from '@/lib/world-scope'
 import {
   deleteMap,
   getMapRecords,
@@ -65,17 +66,17 @@ export function MapManager({ onOpenMap, onEditMap }: MapManagerProps) {
     void Promise.all([db.countries.toArray(), db.characters.toArray(), db.events.toArray()]).then(
       ([countries, characters, events]) => {
         setEntities([
-          ...countries.filter((item) => !item.deleted && item.id !== undefined).map((item) => ({
+          ...filterByActiveWorld(countries).filter((item) => !item.deleted && item.id !== undefined).map((item) => ({
             type: 'country' as const,
             id: item.id as number,
             name: item.name,
           })),
-          ...characters.filter((item) => !item.deleted && item.id !== undefined).map((item) => ({
+          ...filterByActiveWorld(characters).filter((item) => !item.deleted && item.id !== undefined).map((item) => ({
             type: 'character' as const,
             id: item.id as number,
             name: item.name,
           })),
-          ...events.filter((item) => !item.deleted && item.id !== undefined).map((item) => ({
+          ...filterByActiveWorld(events).filter((item) => !item.deleted && item.id !== undefined).map((item) => ({
             type: 'event' as const,
             id: item.id as number,
             name: item.title,

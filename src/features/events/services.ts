@@ -1,4 +1,5 @@
 import { db } from '@/lib/db'
+import { filterByActiveWorld } from '@/lib/world-scope'
 import { logOperation } from '@/lib/sync'
 import { updateReferencesAfterRename, syncReferenceLabels } from '@/lib/reference-sync'
 import {
@@ -37,7 +38,7 @@ function buildDefaultEvent(data: EventFormData, overrides: Partial<Event> = {}):
 
 export async function getEvents(): Promise<Event[]> {
   const all = await db.events.orderBy('time').toArray()
-  return all.filter((e) => !e.deleted)
+  return filterByActiveWorld(all).filter((e) => !e.deleted)
 }
 
 export async function getEvent(id: number): Promise<Event | undefined> {

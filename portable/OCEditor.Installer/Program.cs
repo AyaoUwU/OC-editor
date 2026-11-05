@@ -3,7 +3,7 @@ using System.IO.Compression;
 using System.Reflection;
 using Microsoft.Win32;
 
-namespace OCStudio.Installer;
+namespace OCEditor.Installer;
 
 internal static class Program
 {
@@ -47,7 +47,7 @@ internal static class Program
         try
         {
             File.AppendAllText(
-                Path.Combine(Path.GetTempPath(), "ocstudio-setup.log"),
+                Path.Combine(Path.GetTempPath(), "oceditor-setup.log"),
                 $"[{DateTime.Now:HH:mm:ss}] {message}{Environment.NewLine}");
         }
         catch
@@ -68,6 +68,7 @@ internal static class Program
 
         var desktop = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
         TryDelete(Path.Combine(desktop, "OC editor.lnk"));
+        // 0.18.1 及更早版本的快捷方式名仍是 OC Studio。
         TryDelete(Path.Combine(desktop, "OC Studio.lnk"));
 
         var programs = Environment.GetFolderPath(Environment.SpecialFolder.Programs);
@@ -122,7 +123,7 @@ internal static class Program
 
 internal sealed class InstallerForm : Form
 {
-    private const string PayloadResource = "OCStudio.payload.zip";
+    private const string PayloadResource = "OCEditor.payload.zip";
 
     private readonly TextBox _pathBox = new();
     private readonly CheckBox _desktopShortcut = new();

@@ -3,7 +3,9 @@ import type { MapAnnotation, WorldMapRecord } from '@/types'
 import { normalizeMapParams } from './params'
 import type { PoliticalData } from './political'
 
-const OCMAP_FORMAT = 'oc-studio-map'
+const OCMAP_FORMAT = 'oc-editor-map'
+/** 旧版本导出的 .ocmap 仍可导入。 */
+const LEGACY_OCMAP_FORMAT = 'oc-studio-map'
 const OCMAP_VERSION = 1
 
 function safeFileName(name: string): string {
@@ -285,7 +287,11 @@ export async function importOcmapFile(file: File): Promise<WorldMapRecord> {
   } catch {
     throw new Error('不是有效的 .ocmap 文件')
   }
-  if (!isRecord(parsed) || parsed.format !== OCMAP_FORMAT || !isRecord(parsed.map)) {
+  if (
+    !isRecord(parsed) ||
+    (parsed.format !== OCMAP_FORMAT && parsed.format !== LEGACY_OCMAP_FORMAT) ||
+    !isRecord(parsed.map)
+  ) {
     throw new Error('缺少 OC editor 地图标识')
   }
   const map = parsed.map

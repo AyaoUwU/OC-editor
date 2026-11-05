@@ -1,10 +1,11 @@
 import { db } from '@/lib/db'
+import { belongsToActiveWorld, filterByActiveWorld } from '@/lib/world-scope'
 import type { MapAnnotation } from '@/types'
 import type { GeneratedMeta, WorldMapParams, WorldMapRecord } from './types'
 import { DEFAULT_MAP_PARAMS } from './types'
 import { normalizeMapParams } from './params'
 
-const ACTIVE_MAP_KEY = 'oc-studio-active-map-id'
+const ACTIVE_MAP_KEY = 'oc-editor-active-map-id'
 
 export function getActiveMapId(): number | null {
   if (typeof window === 'undefined') return null
@@ -21,12 +22,15 @@ export function setActiveMapId(id: number): void {
 
 export async function getMapRecords(): Promise<WorldMapRecord[]> {
   const all = await db.maps.orderBy('updatedAt').reverse().toArray()
-  return all.filter((map) => !map.deleted)
+  return filterByActiveWorld(all).filter((map) => !map.deleted)
 }
 
 export async function getMap(id: number): Promise<WorldMapRecord | undefined> {
   const record = await db.maps.get(id)
-  return record && !record.deleted ? record : undefined
+  if (!record || record.deleted) return undefined
+  // 上次打开的地图可能属于其他世界观，切换后不再返回，避免串图。
+  if (!belongsToActiveWorld(record)) return undefined
+  return record
 }
 
 export async function setMapTemplate(id: number, isTemplate: boolean): Promise<void> {

@@ -3,7 +3,7 @@
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react"
 import { invoke } from "@tauri-apps/api/core"
 
-const STORAGE_KEY = "oc-studio-settings"
+const STORAGE_KEY = "oc-editor-settings"
 
 export interface Settings {
   theme: "light" | "dark" | "auto"

@@ -1,8 +1,8 @@
 import type { CapacitorConfig } from '@capacitor/cli'
 
 const config: CapacitorConfig = {
-  appId: 'com.ocstudio.app',
-  appName: 'OC Studio',
+  appId: 'com.oceditor.app',
+  appName: 'OC editor',
   webDir: 'out',
   android: {
     allowMixedContent: true,

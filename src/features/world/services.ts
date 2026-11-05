@@ -1,4 +1,5 @@
 import { db } from '@/lib/db'
+import { filterByActiveWorld } from '@/lib/world-scope'
 import { logOperation } from '@/lib/sync'
 import { updateReferencesAfterRename, syncReferenceLabels } from '@/lib/reference-sync'
 import type { WorldEntry } from '@/types'
@@ -28,7 +29,7 @@ function buildDefaultEntry(data: WorldFormData, overrides: Partial<WorldEntry> =
 
 export async function getEntries(): Promise<WorldEntry[]> {
   const all = await db.worldEntries.orderBy('title').toArray()
-  return all.filter((e) => !e.deleted)
+  return filterByActiveWorld(all).filter((e) => !e.deleted)
 }
 
 export async function getEntry(id: number): Promise<WorldEntry | undefined> {

@@ -1,8 +1,14 @@
 import { db } from '@/lib/db'
+import {
+  activeWorldIdForWrite,
+  belongsToActiveWorld,
+  filterByActiveWorld,
+} from '@/lib/world-scope'
 import type {
   Character,
   Country,
   Event,
+  RelatedCharacter,
   RelationEntityType,
   RelationKind,
   RelationRecord,
@@ -111,9 +117,9 @@ async function readEntities(): Promise<{
     db.events.toArray(),
   ])
   return {
-    characters: charactersRaw.filter((item) => !item.deleted),
-    countries: countriesRaw.filter((item) => !item.deleted),
-    events: eventsRaw.filter((item) => !item.deleted),
+    characters: filterByActiveWorld(charactersRaw).filter((item) => !item.deleted),
+    countries: filterByActiveWorld(countriesRaw).filter((item) => !item.deleted),
+    events: filterByActiveWorld(eventsRaw).filter((item) => !item.deleted),
   }
 }
 
@@ -288,6 +294,54 @@ function collectProjectedRelations(
   return rows
 }
 
+/**
+ * 在「相关人物」投影里定位一条关系。
+ * 新数据用 relationId 精确匹配（同一对角色可以有多条关系）；
+ * 旧数据没有 relationId，用「对端 id + 标签」兜底匹配。
+ */
+function findCharacterProjection(
+  list: RelatedCharacter[] | undefined,
+  relation: RelationRecord,
+  otherId: number,
+): RelatedCharacter | undefined {
+  const items = list ?? []
+  const byId = items.find((item) => item.relationId === relation.id)
+  if (byId) return byId
+  return items.find(
+    (item) => !item.relationId && item.characterId === otherId && item.relation === relation.label,
+  )
+}
+
+function isSameCharacterProjection(
+  item: RelatedCharacter,
+  relation: RelationRecord,
+  otherId: number,
+): boolean {
+  if (item.relationId) return item.relationId === relation.id
+  return item.characterId === otherId && item.relation === relation.label
+}
+
+function removeCharacterProjection(
+  list: RelatedCharacter[] | undefined,
+  relation: RelationRecord,
+  otherId: number,
+): RelatedCharacter[] {
+  const items = list ?? []
+  if (items.some((item) => item.relationId === relation.id)) {
+    return items.filter((item) => item.relationId !== relation.id)
+  }
+  // 旧投影没有 relationId：只删掉标签匹配的那一条，同对的其他关系保留。
+  let removed = false
+  return items.filter((item) => {
+    if (removed) return true
+    if (!item.relationId && item.characterId === otherId && item.relation === relation.label) {
+      removed = true
+      return false
+    }
+    return true
+  })
+}
+
 function relationIsOneSided(
   relation: RelationRecord,
   characterById: Map<number, Character>,
@@ -297,13 +351,9 @@ function relationIsOneSided(
   if (relation.kind === 'character') {
     const source = characterById.get(relation.sourceId)
     const target = characterById.get(relation.targetId)
-    if (!source || !target) return false
-    const sourceLink = (source.relatedCharacters ?? []).find(
-      (item) => item.characterId === target.id,
-    )
-    const targetLink = (target.relatedCharacters ?? []).find(
-      (item) => item.characterId === source.id,
-    )
+    if (!source || !target || source.id === undefined || target.id === undefined) return false
+    const sourceLink = findCharacterProjection(source.relatedCharacters, relation, target.id)
+    const targetLink = findCharacterProjection(target.relatedCharacters, relation, source.id)
     return (
       !sourceLink ||
       !targetLink ||
@@ -374,32 +424,39 @@ function relationIsOneSided(
   return false
 }
 
+export interface RelationSyncResult {
+  relations: RelationRecord[]
+  /** 本次是否修复了实体面板里的投影（会写库）。 */
+  changed: boolean
+}
+
 /**
  * 将旧实体数组中的关系投影合并进 relations 表。
  * 数组仍然可以在旧面板中编辑；这里把它们作为输入，写回唯一真相源。
+ *
+ * 注意：这里只做幂等修复，不再广播 data-updated 事件。
+ * 以往在修复后广播会让 useGraphData 立刻重新同步，同一对角色存在多条关系时
+ * 每次同步都判定「缺一边」→ 写库 → 广播 → 再同步，形成无限刷屏。
  */
-export async function syncRelationsFromEntities(): Promise<RelationRecord[]> {
+export async function syncRelationsFromEntities(): Promise<RelationSyncResult> {
   const entities = await readEntities()
   const projected = collectProjectedRelations(entities.characters, entities.countries, entities.events)
   const existing = new Map((await db.relations.toArray()).map((relation) => [relation.id, relation]))
   const now = Date.now()
   const changes: RelationRecord[] = []
+  let changed = false
 
   const characterById = new Map(entities.characters.map((item) => [item.id!, item]))
   const countryById = new Map(entities.countries.map((item) => [item.id!, item]))
   const eventById = new Map(entities.events.map((item) => [item.id!, item]))
-  let repaired = false
   for (const relation of projected.values()) {
     if (!relationIsOneSided(relation, characterById, countryById, eventById)) continue
-    repaired = true
     const canonical = existing.get(relation.id)
-    await applyProjectionAdd({
+    const wrote = await applyProjectionAdd({
       ...relation,
       label: canonical && !canonical.deleted ? canonical.label : relation.label,
     })
-  }
-  if (repaired && typeof window !== 'undefined') {
-    window.dispatchEvent(new Event('data-updated'))
+    if (wrote) changed = true
   }
 
   for (const relation of projected.values()) {
@@ -418,10 +475,12 @@ export async function syncRelationsFromEntities(): Promise<RelationRecord[]> {
       current.deleted ||
       current.label !== nextLabel ||
       current.kind !== relation.kind ||
-      current.directed !== relation.directed
+      current.directed !== relation.directed ||
+      current.worldId === undefined
     ) {
       changes.push({
         ...current,
+        worldId: current.worldId ?? activeWorldIdForWrite(),
         label: nextLabel,
         kind: relation.kind,
         directed: relation.directed,
@@ -433,9 +492,22 @@ export async function syncRelationsFromEntities(): Promise<RelationRecord[]> {
 
   // 已从面板移除的旧关系同步软删除；custom 边不在此清理，避免误删图编辑创建的关系。
   // 新创建的边可能比数组投影晚 1-2 帧落库，给 3 秒宽限，避免“刚连线就被同步删掉”。
+  const inWorldEntityKey = new Set<string>([
+    ...entities.characters.map((item) => `character-${item.id}`),
+    ...entities.countries.map((item) => `country-${item.id}`),
+    ...entities.events.map((item) => `event-${item.id}`),
+  ])
+  const relationInScope = (relation: RelationRecord): boolean => {
+    if (relation.worldId !== undefined && !belongsToActiveWorld(relation)) return false
+    return (
+      inWorldEntityKey.has(`${relation.sourceType}-${relation.sourceId}`) &&
+      inWorldEntityKey.has(`${relation.targetType}-${relation.targetId}`)
+    )
+  }
   for (const current of existing.values()) {
     if (projected.has(current.id) || current.deleted) continue
     if (!MANAGED_KINDS.includes(current.kind)) continue
+    if (!relationInScope(current)) continue
     if (now - current.updatedAt < 3000) continue
     changes.push({ ...current, deleted: true, updatedAt: now })
   }
@@ -444,7 +516,7 @@ export async function syncRelationsFromEntities(): Promise<RelationRecord[]> {
     await db.relations.bulkPut(changes)
   }
 
-  return [...projected.values()]
+  return { relations: [...projected.values()], changed }
 }
 
 function uniquePush<T>(values: T[] | undefined, value: T): T[] {
@@ -463,94 +535,141 @@ function withoutKey(record: Record<number, string> | undefined, key: number): Re
   return next
 }
 
-async function applyProjectionAdd(relation: RelationRecord): Promise<void> {
+/** 写库前比较，内容没变就不写；否则 liveQuery 会因空写一直刷新。 */
+function sameJson(a: unknown, b: unknown): boolean {
+  return JSON.stringify(a ?? null) === JSON.stringify(b ?? null)
+}
+
+function upsertCharacterProjection(
+  list: RelatedCharacter[] | undefined,
+  relation: RelationRecord,
+  otherId: number,
+  otherName: string,
+): RelatedCharacter[] {
+  const items = [...(list ?? [])]
+  const index = items.findIndex((item) => isSameCharacterProjection(item, relation, otherId))
+  const next: RelatedCharacter = {
+    relationId: relation.id,
+    characterId: otherId,
+    name: otherName,
+    relation: relation.label,
+  }
+  if (index >= 0) items[index] = next
+  else items.push(next)
+  return items
+}
+
+/** 把一条关系写回实体面板的投影字段；返回是否真的写库。 */
+async function applyProjectionAdd(relation: RelationRecord): Promise<boolean> {
   const { characters, countries, events } = await readEntities()
   const characterById = new Map(characters.map((item) => [item.id, item]))
   const countryById = new Map(countries.map((item) => [item.id, item]))
   const eventById = new Map(events.map((item) => [item.id, item]))
   const now = Date.now()
+  const writes: Promise<unknown>[] = []
 
   if (relation.kind === 'character') {
     const source = characterById.get(relation.sourceId)
     const target = characterById.get(relation.targetId)
     if (source?.id !== undefined && target?.id !== undefined) {
-      const sourceRelations = (source.relatedCharacters ?? []).filter((item) =>
-        item.relationId
-          ? item.relationId !== relation.id
-          : item.characterId !== target.id,
+      const nextSource = upsertCharacterProjection(
+        source.relatedCharacters,
+        relation,
+        target.id,
+        target.name,
       )
-      sourceRelations.push({
-        relationId: relation.id,
-        characterId: target.id,
-        name: target.name,
-        relation: relation.label,
-      })
-      const targetRelations = (target.relatedCharacters ?? []).filter((item) =>
-        item.relationId
-          ? item.relationId !== relation.id
-          : item.characterId !== source.id,
+      const nextTarget = upsertCharacterProjection(
+        target.relatedCharacters,
+        relation,
+        source.id,
+        source.name,
       )
-      targetRelations.push({
-        relationId: relation.id,
-        characterId: source.id,
-        name: source.name,
-        relation: relation.label,
-      })
-      await Promise.all([
-        db.characters.update(source.id, {
-          relatedCharacters: sourceRelations,
-          updatedAt: now,
-          _syncStatus: 'pending',
-        }),
-        db.characters.update(target.id, {
-          relatedCharacters: targetRelations,
-          updatedAt: now,
-          _syncStatus: 'pending',
-        }),
-      ])
+      if (!sameJson(source.relatedCharacters, nextSource)) {
+        writes.push(
+          db.characters.update(source.id, {
+            relatedCharacters: nextSource,
+            updatedAt: now,
+            _syncStatus: 'pending',
+          }),
+        )
+      }
+      if (!sameJson(target.relatedCharacters, nextTarget)) {
+        writes.push(
+          db.characters.update(target.id, {
+            relatedCharacters: nextTarget,
+            updatedAt: now,
+            _syncStatus: 'pending',
+          }),
+        )
+      }
     }
   } else if (relation.kind === 'membership') {
     const character = characterById.get(relation.sourceId)
     const country = countryById.get(relation.targetId)
     if (character?.id !== undefined && country?.id !== undefined) {
-      await Promise.all([
-        db.characters.update(character.id, {
-          countryId: country.id,
-          relatedNations: uniquePush(character.relatedNations, country.id),
-          relatedNationLabels: {
-            ...(character.relatedNationLabels ?? {}),
-            [country.id]: relation.label,
-          },
-          updatedAt: now,
-          _syncStatus: 'pending',
-        }),
-        db.countries.update(country.id, {
-          characters: uniquePush(country.characters, character.id),
-          updatedAt: now,
-          _syncStatus: 'pending',
-        }),
-      ])
+      const nextNations = uniquePush(character.relatedNations, country.id)
+      const nextLabels = {
+        ...(character.relatedNationLabels ?? {}),
+        [country.id]: relation.label,
+      }
+      const nextCountryCharacters = uniquePush(country.characters, character.id)
+      if (
+        character.countryId !== country.id ||
+        !sameJson(character.relatedNations, nextNations) ||
+        !sameJson(character.relatedNationLabels, nextLabels)
+      ) {
+        writes.push(
+          db.characters.update(character.id, {
+            countryId: country.id,
+            relatedNations: nextNations,
+            relatedNationLabels: nextLabels,
+            updatedAt: now,
+            _syncStatus: 'pending',
+          }),
+        )
+      }
+      if (!sameJson(country.characters, nextCountryCharacters)) {
+        writes.push(
+          db.countries.update(country.id, {
+            characters: nextCountryCharacters,
+            updatedAt: now,
+            _syncStatus: 'pending',
+          }),
+        )
+      }
     }
   } else if (relation.kind === 'event-character') {
     const event = eventById.get(relation.sourceId)
     const character = characterById.get(relation.targetId)
     if (event?.id !== undefined && character?.id !== undefined) {
-      await Promise.all([
-        db.events.update(event.id, {
-          characters: uniquePush(event.characters, character.id),
-          updatedAt: now,
-          _syncStatus: 'pending',
-        }),
-        db.characters.update(character.id, {
-          relatedEvents: uniquePush(character.relatedEvents, event.id),
-          relatedEventLabels: {
-            ...(character.relatedEventLabels ?? {}),
-            [event.id]: relation.label,
-          },
-          updatedAt: now,
-          _syncStatus: 'pending',
-        }),
-      ])
+      const nextEventCharacters = uniquePush(event.characters, character.id)
+      const nextEvents = uniquePush(character.relatedEvents, event.id)
+      const nextLabels = {
+        ...(character.relatedEventLabels ?? {}),
+        [event.id]: relation.label,
+      }
+      if (!sameJson(event.characters, nextEventCharacters)) {
+        writes.push(
+          db.events.update(event.id, {
+            characters: nextEventCharacters,
+            updatedAt: now,
+            _syncStatus: 'pending',
+          }),
+        )
+      }
+      if (
+        !sameJson(character.relatedEvents, nextEvents) ||
+        !sameJson(character.relatedEventLabels, nextLabels)
+      ) {
+        writes.push(
+          db.characters.update(character.id, {
+            relatedEvents: nextEvents,
+            relatedEventLabels: nextLabels,
+            updatedAt: now,
+            _syncStatus: 'pending',
+          }),
+        )
+      }
     }
   } else if (
     relation.kind === 'event-event' ||
@@ -562,71 +681,115 @@ async function applyProjectionAdd(relation: RelationRecord): Promise<void> {
       list: Event['relations'],
       targetId: number,
       label: string,
-    ): Event['relations'] => [
-      ...(list ?? []).filter((item) => item.targetId !== targetId),
-      { targetId, relation: label },
-    ]
+    ): Event['relations'] => {
+      const items = [...(list ?? [])]
+      const index = items.findIndex((item) => item.targetId === targetId)
+      const next = { targetId, relation: label }
+      if (index >= 0) items[index] = next
+      else items.push(next)
+      return items
+    }
     if (source?.id !== undefined && target?.id !== undefined) {
-      await Promise.all([
-        db.events.update(source.id, {
-          relations: upsert(source.relations, target.id, relation.label),
-          updatedAt: now,
-          _syncStatus: 'pending',
-        }),
-        db.events.update(target.id, {
-          relations: upsert(target.relations, source.id, relation.label),
-          updatedAt: now,
-          _syncStatus: 'pending',
-        }),
-      ])
+      const nextSource = upsert(source.relations, target.id, relation.label)
+      const nextTarget = upsert(target.relations, source.id, relation.label)
+      if (!sameJson(source.relations, nextSource)) {
+        writes.push(
+          db.events.update(source.id, {
+            relations: nextSource,
+            updatedAt: now,
+            _syncStatus: 'pending',
+          }),
+        )
+      }
+      if (!sameJson(target.relations, nextTarget)) {
+        writes.push(
+          db.events.update(target.id, {
+            relations: nextTarget,
+            updatedAt: now,
+            _syncStatus: 'pending',
+          }),
+        )
+      }
     }
   } else if (relation.kind === 'event-country') {
     const event = eventById.get(relation.sourceId)
     const country = countryById.get(relation.targetId)
     if (event?.id !== undefined && country?.id !== undefined) {
-      await Promise.all([
-        db.events.update(event.id, {
-          countries: uniquePush(event.countries, country.id),
-          updatedAt: now,
-          _syncStatus: 'pending',
-        }),
-        db.countries.update(country.id, {
-          relatedEvents: uniquePush(country.relatedEvents, event.id),
-          relatedEventLabels: {
-            ...(country.relatedEventLabels ?? {}),
-            [event.id]: relation.label,
-          },
-          updatedAt: now,
-          _syncStatus: 'pending',
-        }),
-      ])
+      const nextEventCountries = uniquePush(event.countries, country.id)
+      const nextCountryEvents = uniquePush(country.relatedEvents, event.id)
+      const nextLabels = {
+        ...(country.relatedEventLabels ?? {}),
+        [event.id]: relation.label,
+      }
+      if (!sameJson(event.countries, nextEventCountries)) {
+        writes.push(
+          db.events.update(event.id, {
+            countries: nextEventCountries,
+            updatedAt: now,
+            _syncStatus: 'pending',
+          }),
+        )
+      }
+      if (
+        !sameJson(country.relatedEvents, nextCountryEvents) ||
+        !sameJson(country.relatedEventLabels, nextLabels)
+      ) {
+        writes.push(
+          db.countries.update(country.id, {
+            relatedEvents: nextCountryEvents,
+            relatedEventLabels: nextLabels,
+            updatedAt: now,
+            _syncStatus: 'pending',
+          }),
+        )
+      }
     }
   } else if (relation.kind === 'nation') {
     const source = countryById.get(relation.sourceId)
     const target = countryById.get(relation.targetId)
     if (source?.id !== undefined && target?.id !== undefined) {
-      await Promise.all([
-        db.countries.update(source.id, {
-          relatedNations: uniquePush(source.relatedNations, target.id),
-          relatedNationLabels: {
-            ...(source.relatedNationLabels ?? {}),
-            [target.id]: relation.label,
-          },
-          updatedAt: now,
-          _syncStatus: 'pending',
-        }),
-        db.countries.update(target.id, {
-          relatedNations: uniquePush(target.relatedNations, source.id),
-          relatedNationLabels: {
-            ...(target.relatedNationLabels ?? {}),
-            [source.id]: relation.label,
-          },
-          updatedAt: now,
-          _syncStatus: 'pending',
-        }),
-      ])
+      const nextSourceNations = uniquePush(source.relatedNations, target.id)
+      const nextSourceLabels = {
+        ...(source.relatedNationLabels ?? {}),
+        [target.id]: relation.label,
+      }
+      const nextTargetNations = uniquePush(target.relatedNations, source.id)
+      const nextTargetLabels = {
+        ...(target.relatedNationLabels ?? {}),
+        [source.id]: relation.label,
+      }
+      if (
+        !sameJson(source.relatedNations, nextSourceNations) ||
+        !sameJson(source.relatedNationLabels, nextSourceLabels)
+      ) {
+        writes.push(
+          db.countries.update(source.id, {
+            relatedNations: nextSourceNations,
+            relatedNationLabels: nextSourceLabels,
+            updatedAt: now,
+            _syncStatus: 'pending',
+          }),
+        )
+      }
+      if (
+        !sameJson(target.relatedNations, nextTargetNations) ||
+        !sameJson(target.relatedNationLabels, nextTargetLabels)
+      ) {
+        writes.push(
+          db.countries.update(target.id, {
+            relatedNations: nextTargetNations,
+            relatedNationLabels: nextTargetLabels,
+            updatedAt: now,
+            _syncStatus: 'pending',
+          }),
+        )
+      }
     }
   }
+
+  if (writes.length === 0) return false
+  await Promise.all(writes)
+  return true
 }
 
 async function applyProjectionRemove(relation: RelationRecord): Promise<void> {
@@ -640,26 +803,22 @@ async function applyProjectionRemove(relation: RelationRecord): Promise<void> {
     const source = characterById.get(relation.sourceId)
     const target = characterById.get(relation.targetId)
     if (source?.id !== undefined && target?.id !== undefined) {
-      await Promise.all([
-        db.characters.update(source.id, {
-          relatedCharacters: (source.relatedCharacters ?? []).filter((item) =>
-            item.relationId
-              ? item.relationId !== relation.id
-              : item.characterId !== target.id,
-          ),
+      const nextSource = removeCharacterProjection(source.relatedCharacters, relation, target.id)
+      const nextTarget = removeCharacterProjection(target.relatedCharacters, relation, source.id)
+      if (!sameJson(source.relatedCharacters, nextSource)) {
+        await db.characters.update(source.id, {
+          relatedCharacters: nextSource,
           updatedAt: now,
           _syncStatus: 'pending',
-        }),
-        db.characters.update(target.id, {
-          relatedCharacters: (target.relatedCharacters ?? []).filter((item) =>
-            item.relationId
-              ? item.relationId !== relation.id
-              : item.characterId !== source.id,
-          ),
+        })
+      }
+      if (!sameJson(target.relatedCharacters, nextTarget)) {
+        await db.characters.update(target.id, {
+          relatedCharacters: nextTarget,
           updatedAt: now,
           _syncStatus: 'pending',
-        }),
-      ])
+        })
+      }
     }
   } else if (relation.kind === 'membership') {
     const character = characterById.get(relation.sourceId)
@@ -870,6 +1029,7 @@ export async function createRelation(input: {
   }
   const record: RelationRecord = {
     id,
+    worldId: activeWorldIdForWrite(),
     sourceType: normalized.sourceType,
     sourceId: normalized.sourceId,
     targetType: normalized.targetType,
@@ -899,10 +1059,12 @@ export async function buildGraphData(): Promise<{ nodes: GraphNode[]; edges: Gra
     db.countries.toArray(),
     db.relations.toArray(),
   ])
-  const characters = charactersRaw.filter((item) => !item.deleted)
-  const events = eventsRaw.filter((item) => !item.deleted)
-  const countries = countriesRaw.filter((item) => !item.deleted)
-  const relations = relationsRaw.filter((item) => !item.deleted)
+  const characters = filterByActiveWorld(charactersRaw).filter((item) => !item.deleted)
+  const events = filterByActiveWorld(eventsRaw).filter((item) => !item.deleted)
+  const countries = filterByActiveWorld(countriesRaw).filter((item) => !item.deleted)
+  const relations = relationsRaw.filter(
+    (item) => !item.deleted && (item.worldId === undefined || belongsToActiveWorld(item)),
+  )
   const projected = collectProjectedRelations(characters, countries, events)
   const mergedRelations = new Map(projected)
   for (const relation of relations) {

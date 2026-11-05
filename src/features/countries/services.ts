@@ -1,4 +1,5 @@
 import { db } from '@/lib/db'
+import { filterByActiveWorld } from '@/lib/world-scope'
 import { logOperation } from '@/lib/sync'
 import { updateReferencesAfterRename, syncReferenceLabels } from '@/lib/reference-sync'
 import { syncRelationLabelFromEntity } from '@/features/relations/services'
@@ -35,7 +36,7 @@ function buildDefaultCountry(data: CountryFormData, overrides: Partial<Country> 
 
 export async function getCountries(): Promise<Country[]> {
   const all = await db.countries.orderBy('name').toArray()
-  return all.filter((c) => !c.deleted)
+  return filterByActiveWorld(all).filter((c) => !c.deleted)
 }
 
 export async function getCountry(id: number): Promise<Country | undefined> {

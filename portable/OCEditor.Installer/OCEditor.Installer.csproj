@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
@@ -7,8 +7,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AssemblyName>OCeditorSetup</AssemblyName>
-    <RootNamespace>OCStudio.Installer</RootNamespace>
-    <ApplicationIcon>..\ocstudio.ico</ApplicationIcon>
+    <RootNamespace>OCEditor.Installer</RootNamespace>
+    <ApplicationIcon>..\oceditor.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <Platforms>x64</Platforms>
     <PlatformTarget>x64</PlatformTarget>
@@ -19,15 +19,15 @@
     <EnableCompressionInSingleFile>false</EnableCompressionInSingleFile>
     <DebugType>None</DebugType>
     <DebugSymbols>false</DebugSymbols>
-    <Version>0.18.3</Version>
-    <FileVersion>0.18.3.0</FileVersion>
-    <AssemblyTitle>OC editor 安装程序</AssemblyTitle>
+    <Version>0.19.0</Version>
+    <FileVersion>0.19.0.0</FileVersion>
+    <AssemblyTitle>OC editor 瀹夎绋嬪簭</AssemblyTitle>
     <Product>OC editor</Product>
     <Company>OC editor</Company>
   </PropertyGroup>
 
   <ItemGroup>
-    <EmbeddedResource Include="payload.zip" LogicalName="OCStudio.payload.zip" />
+    <EmbeddedResource Include="payload.zip" LogicalName="OCEditor.payload.zip" />
   </ItemGroup>
 
 </Project>

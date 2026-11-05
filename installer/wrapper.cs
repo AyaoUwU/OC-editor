@@ -11,10 +11,10 @@ internal static class Program
     {
         try
         {
-            var dir = Path.Combine(Path.GetTempPath(), "OCStudioSetup");
+            var dir = Path.Combine(Path.GetTempPath(), "OCEditorSetup");
             Directory.CreateDirectory(dir);
-            var msi = Path.Combine(dir, "OC-Studio-Setup.msi");
-            using (var input = Assembly.GetExecutingAssembly().GetManifestResourceStream("OCStudioSetup.msi"))
+            var msi = Path.Combine(dir, "OCEditor-Setup.msi");
+            using (var input = Assembly.GetExecutingAssembly().GetManifestResourceStream("OCEditorSetup.msi"))
             {
                 if (input == null) throw new InvalidOperationException("安装包资源缺失。");
                 using (var output = File.Create(msi)) input.CopyTo(output);

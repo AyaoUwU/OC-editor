@@ -1,4 +1,5 @@
 import type { TimelineEvent } from './types'
+import { clampYear } from '@/features/events/utils'
 
 export type TimelineDensity = 'year' | 'decade' | 'half-century' | 'century'
 
@@ -28,8 +29,13 @@ export function densityLabel(density: TimelineDensity): string {
 export function parseYear(time: string): number | null {
   if (!time) return null
   const match = /^-?\d+/.exec(time)
-  return match ? parseInt(match[0], 10) : null
+  if (!match) return null
+  return clampYear(parseInt(match[0], 10))
 }
+
+/** 单个视图最多渲染的分桶/刻度数量，防止超长时间跨度把页面卡死。 */
+const MAX_BUCKETS = 400
+const MAX_TICKS = 400
 
 export function buildBuckets(
   timedEvents: TimelineEvent[],
@@ -39,7 +45,12 @@ export function buildBuckets(
   pxPerYear: number,
   leftPadding: number,
 ): BucketResult {
-  const bucketSize = density === 'decade' ? 10 : density === 'half-century' ? 50 : 100
+  const baseSize = density === 'decade' ? 10 : density === 'half-century' ? 50 : 100
+  // 跨度极大时自动放大桶宽，桶的数量始终受 MAX_BUCKETS 限制。
+  let bucketSize = baseSize
+  while (bucketSize < 1_000_000 && totalYears / bucketSize > MAX_BUCKETS) {
+    bucketSize *= 10
+  }
 
   // Split: spanning (crosses bucket boundary) vs bucket-fitting
   const spanningEvents: TimelineEvent[] = []
@@ -80,34 +91,28 @@ export function buildBuckets(
     item.lane = lane
   }
 
-  // Build buckets from non-spanning events only
-  const bucketStart =
-    Math.trunc(rangeStart / bucketSize) * bucketSize
-
-  const bucketEnd = rangeStart + totalYears
-  const bucketCount =
-    Math.ceil((bucketEnd - bucketStart) / bucketSize)
+  // 只处理真正有事件的桶（按桶索引分组），不再遍历整个时间跨度。
+  const grouped = new Map<number, TimelineEvent[]>()
+  for (const e of bucketEvents) {
+    const y = parseYear(e.time)
+    if (y === null) continue
+    const index = Math.floor(y / bucketSize)
+    const list = grouped.get(index)
+    if (list) list.push(e)
+    else grouped.set(index, [e])
+  }
 
   const buckets: TimeBucket[] = []
-
-  for (let i = 0; i < bucketCount; i++) {
-    const startYear = bucketStart + i * bucketSize
+  const indices = [...grouped.keys()].sort((a, b) => a - b)
+  for (const index of indices) {
+    const startYear = index * bucketSize
     const endYear = startYear + bucketSize - 1
-
-    const events = bucketEvents
-      .filter((e) => {
-        const y = parseYear(e.time)
-        if (y === null) return false
-        const eventEndYear = parseYear(e.endTime || e.time) ?? y
-        return eventEndYear >= startYear && y <= endYear
-      })
-      .sort((a, b) => {
-        const aY = parseYear(a.time) ?? 0
-        const bY = parseYear(b.time) ?? 0
-        if (aY !== bY) return aY - bY
-        return a.time.localeCompare(b.time)
-      })
-
+    const events = (grouped.get(index) ?? []).sort((a, b) => {
+      const aY = parseYear(a.time) ?? 0
+      const bY = parseYear(b.time) ?? 0
+      if (aY !== bY) return aY - bY
+      return a.time.localeCompare(b.time)
+    })
     if (events.length === 0) continue
 
     buckets.push({
@@ -151,8 +156,10 @@ export function buildYearTicks(
   leftPadding: number,
 ): YearTick[] {
   if (density === 'year') {
+    // 年视图最多渲染 MAX_TICKS 个刻度；年份跨度再大也不会撑爆 DOM。
+    const step = Math.max(1, Math.ceil(totalYears / MAX_TICKS))
     const ticks: YearTick[] = []
-    for (let i = 0; i < totalYears; i++) {
+    for (let i = 0; i <= totalYears; i += step) {
       ticks.push({
         year: rangeStart + i,
         x: leftPadding + i * pxPerYear,
@@ -161,7 +168,10 @@ export function buildYearTicks(
     return ticks
   }
 
-  const step = density === 'decade' ? 10 : density === 'half-century' ? 50 : 100
+  let step = density === 'decade' ? 10 : density === 'half-century' ? 50 : 100
+  while (step < 1_000_000 && totalYears / step > MAX_TICKS) {
+    step *= 10
+  }
   const start =
     Math.trunc(rangeStart / step) * step
   const end = rangeStart + totalYears

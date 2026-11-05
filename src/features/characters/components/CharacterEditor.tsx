@@ -19,7 +19,7 @@ import { ProfileBannerEditor } from '@/components/shared/ProfileBannerEditor'
 import { resolveImageUrl, saveBlobToDisk } from '@/lib/image-service'
 import { downloadMedia } from '@/lib/download'
 import { useCustomSections } from '@/features/custom-sections'
-import { deleteRelation } from '@/features/relations/services'
+import { createRelation, deleteRelation } from '@/features/relations/services'
 
 interface CharacterEditorProps {
   editCharacterId: number
@@ -274,6 +274,51 @@ function CharacterEditorInner({
         ),
       ),
     [relatedCharacters],
+  )
+
+  /** 同一个角色可以有多条关系：按角色分组展示，每组可继续“+ 添加关系”。 */
+  const groupedRelations = useMemo(() => {
+    const groups: Array<{
+      key: string
+      characterId?: number
+      name: string
+      items: Array<{ rc: RelatedCharacter; index: number }>
+    }> = []
+    const indexByKey = new Map<string, number>()
+    relatedCharacters.forEach((rc, index) => {
+      const key = rc.characterId !== undefined ? `id:${rc.characterId}` : `legacy:${index}`
+      const existing = indexByKey.get(key)
+      if (existing !== undefined) {
+        groups[existing].items.push({ rc, index })
+        return
+      }
+      indexByKey.set(key, groups.length)
+      groups.push({
+        key,
+        characterId: rc.characterId,
+        name:
+          rc.name ||
+          allCharacters.find((item) => item.id === rc.characterId)?.name ||
+          '未命名角色',
+        items: [{ rc, index }],
+      })
+    })
+    return groups
+  }, [allCharacters, relatedCharacters])
+
+  const handleAddRelation = useCallback(
+    async (targetId: number) => {
+      if (character.id === undefined) return
+      await createRelation({
+        sourceType: 'character',
+        sourceId: character.id,
+        targetType: 'character',
+        targetId,
+        label: '相关',
+        allowDuplicate: true,
+      })
+    },
+    [character.id],
   )
 
   const handleRelatedCharactersChange = useCallback(
@@ -869,37 +914,61 @@ function CharacterEditorInner({
 
             {relatedCharacters.length > 0 ? (
               <div className="mt-3 space-y-2">
-                {relatedCharacters.map((rc, idx) => (
+                {groupedRelations.map((group) => (
                   <div
-                    key={rc.relationId ?? `${rc.characterId ?? 'related'}-${idx}`}
-                    className="flex items-center gap-2"
+                    key={group.key}
+                    className="rounded-lg border border-line bg-paper-card/30 px-2.5 py-2"
                   >
-                    <span className="text-sm text-ink-muted w-20 shrink-0 truncate">{rc.name}</span>
-                    <span className="text-sm text-ink-muted shrink-0">关系：</span>
-                    <input
-                      type="text"
-                      value={rc.relation}
-                      onChange={(e) => {
-                        const next = [...relatedCharacters]
-                        next[idx] = { ...next[idx], relation: e.target.value }
-                        setRelatedCharacters(next)
-                      }}
-                      placeholder="挚友、师徒..."
-                      className="flex-1 h-9 rounded border border-line bg-paper-card px-3 text-sm text-ink placeholder:text-ink-faint focus:border-line-hover focus:outline-none"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const removed = relatedCharacters[idx]
-                        if (removed?.relationId) void deleteRelation(removed.relationId)
-                        setRelatedCharacters((current) =>
-                          current.filter((_, i) => i !== idx),
-                        )
-                      }}
-                      className="text-ink-faint hover:text-error text-sm px-1"
-                    >
-                      ✕
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <span className="min-w-0 flex-1 truncate text-sm text-ink-muted">
+                        {group.name}
+                      </span>
+                      {group.items.length > 1 ? (
+                        <span className="shrink-0 rounded border border-line px-1.5 py-0.5 text-[10px] text-ink-faint">
+                          {group.items.length} 条关系
+                        </span>
+                      ) : null}
+                      {group.characterId !== undefined ? (
+                        <button
+                          type="button"
+                          onClick={() => void handleAddRelation(group.characterId as number)}
+                          title="为这个角色再加一条关系"
+                          className="flex h-6 w-6 shrink-0 items-center justify-center rounded text-ink-faint transition-colors hover:bg-black/5 hover:text-ink dark:hover:bg-white/5"
+                        >
+                          <Plus size={13} strokeWidth={2} />
+                        </button>
+                      ) : null}
+                    </div>
+                    {group.items.map(({ rc, index }) => (
+                      <div key={rc.relationId ?? `rel-${index}`} className="mt-1.5 flex items-center gap-2">
+                        <span className="shrink-0 text-xs text-ink-faint">关系</span>
+                        <input
+                          type="text"
+                          value={rc.relation}
+                          onChange={(e) => {
+                            const next = [...relatedCharacters]
+                            next[index] = { ...next[index], relation: e.target.value }
+                            setRelatedCharacters(next)
+                          }}
+                          placeholder="挚友、师徒..."
+                          className="h-8 flex-1 rounded border border-line bg-paper-card px-3 text-sm text-ink placeholder:text-ink-faint focus:border-line-hover focus:outline-none"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const removed = relatedCharacters[index]
+                            if (removed?.relationId) void deleteRelation(removed.relationId)
+                            setRelatedCharacters((current) =>
+                              current.filter((_, i) => i !== index),
+                            )
+                          }}
+                          title="删除这条关系"
+                          className="shrink-0 px-1 text-sm text-ink-faint hover:text-error"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))}
                   </div>
                 ))}
               </div>
